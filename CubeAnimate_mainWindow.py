@@ -13,6 +13,20 @@ class Axis(Enum):
     Y = 1
     Z = 2
 
+class CubeSize:
+    def __init__(self, x: int = 0, y: int = 0, z: int = 0):
+        self.size = {}
+        self.size[Axis.X] = max(0,x)
+        self.size[Axis.Y] = max(0,y)
+        self.size[Axis.Z] = max(0,z)
+    
+    def getSize(self, axis : Axis) -> int:
+        return self.size[axis]
+
+    def setSize(self, axis : Axis, size : int):
+        self.size[axis] = max(0,size)
+
+
 class ScatterDataModifier(QtCore.QObject):
 
     def __init__(self, x : int, y : int, z : int, newColor_signal:QtCore.pyqtSignal, eraseColor_signal:QtCore.pyqtSignal, scatter, parent):
@@ -106,7 +120,7 @@ class ScatterDataModifier(QtCore.QObject):
 
 
 class CubeViewer3D(Qtw.QWidget):
-    def __init__(self, x : int, y : int, z : int, newColor_signal:QtCore.pyqtSignal, eraseColor_signal:QtCore.pyqtSignal, parent):
+    def __init__(self, size : CubeSize, newColor_signal:QtCore.pyqtSignal, eraseColor_signal:QtCore.pyqtSignal, parent):
         super(Qtw.QWidget, self).__init__(parent)
         
         self.parent = parent
@@ -131,7 +145,7 @@ class CubeViewer3D(Qtw.QWidget):
         self.layout = Qtw.QGridLayout(self)
         self.layout.addWidget(self.container, 0,0)
 
-        self.modifier = ScatterDataModifier(x, y, z, newColor_signal, eraseColor_signal, self.graph, self)
+        self.modifier = ScatterDataModifier(size.getSize(Axis.X), size.getSize(Axis.Y), size.getSize(Axis.Z), newColor_signal, eraseColor_signal, self.graph, self)
     
     def getCurrentColor(self) -> QColor :
         return self.parent.getCurrentColor()
@@ -491,11 +505,11 @@ class FrameCreator(Qtw.QWidget):
     newColorLED_signal = QtCore.pyqtSignal(int,int,int, QColor)
     eraseColorLED_signal = QtCore.pyqtSignal(int,int,int)
 
-    def __init__(self,parent=None):
+    def __init__(self, frame : CubeLEDFrame_DATA, cubeSize : CubeSize, parent=None):
         super(Qtw.QWidget, self).__init__(parent)
         self._parent = parent
 
-        self.frame = CubeLEDFrame_DATA(8,8,8)
+        self.frame = frame
 
         self.layout=Qtw.QGridLayout(self)
         self.setLayout(self.layout)
@@ -503,8 +517,8 @@ class FrameCreator(Qtw.QWidget):
         self.colorPicker = ColorPicker(self)
         self.layout.addWidget(self.colorPicker,0,0)
 
-        self.view = CubeViewer3D(self.frame.getSizeX(),self.frame.getSizeY(),self.frame.getSizeZ(), self.newColorLED_signal, self.eraseColorLED_signal, self)
-        self.layout.addWidget(self.view,0,1)
+        self.cubeViewer = CubeViewer3D(cubeSize,self.newColorLED_signal, self.eraseColorLED_signal, self)
+        self.layout.addWidget(self.cubeViewer,0,1)
         
         self.cube = CubeFullView(self.frame.getSizeX(),self.frame.getSizeY(),self.frame.getSizeZ(), self.newColorLED_signal, self.eraseColorLED_signal, self)
         self.layout.addWidget(self.cube,1,0,1,3)
@@ -514,70 +528,100 @@ class FrameCreator(Qtw.QWidget):
 
         #self.upperRightSpacer = Qtw.QSpacerItem(20, 40, Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Minimum)
         #self.layout.addItem(self.upperRightSpacer,0,2)
-
-        self.image = Qtw.QLabel()
-        self.layout.addWidget(self.image,0,2)
-        self.image.setPixmap(self.view.getCurrentFramePixmap(QtCore.QSize(200,200)))
     
     def getCurrentColor(self) -> QColor :
         return self.colorPicker.getColor()
+    
+    def changeCurrentFrame(frame : CubeLEDFrame_DATA):
+        self.newColorLED_signal.disconnect(self.frame.setColorLED)
+        self.eraseColorLED_signal.disconnect(self.frame.eraseColorLED)
+        
+        self.frame = frame
+
+        self.newColorLED_signal.connect(self.frame.setColorLED)
+        self.eraseColorLED_signal.connect(self.frame.eraseColorLED)
+        
 
 
 class CubeLEDFrame(Qtw.QListWidgetItem):
-    def __init__(self, parentList):
+    def __init__(self, name : str, sizeX :int, sizeY :int, sizeZ :int, parentList, parent):
         super(Qtw.QListWidgetItem, self).__init__(None,parentList)
+        self.parentList = parentList
+        self.parent = parent
+        
+        self.frameData = CubeLEDFrame_DATA(sizeX, sizeY, sizeZ)
+        self.setSizeHint(QtCore.QSize(200,200))
+
+        #self.frame =  Qtw.QWidget()
+        self.frame =  Qtw.QGroupBox(name)
+        self.layout = Qtw.QVBoxLayout()
+        self.frame.setLayout(self.layout)
+
+        self.illustration = Qtw.QLabel()
+        self.layout.addWidget(self.illustration)
+
+
+        self.updateIllustration()
+        
+        self.parentList.setItemWidget(self,self.frame)
+    
+    def updateIllustration(self):
+        self.illustration.setPixmap(self.getCurrentCubePixmap()) 
+
+    def getCurrentCubePixmap(self) -> QPixmap:
+        return self.parent.getCurrentCubePixmap()
+
 
 
 class AnimationList(Qtw.QWidget):
-    def __init__(self, icon : QIcon, parent=None):
+    def __init__(self, parent):
         super(Qtw.QWidget, self).__init__(parent)
+        self.parent = parent
 
-        self.widget_layout = Qtw.QVBoxLayout()
+        self.layout = Qtw.QVBoxLayout()
+        self.setLayout(self.layout)
 
-        # Create ListWidget and add 10 items to move around.
-        self.list_widget = Qtw.QListWidget()
-        self.list_widget.setFlow(Qtw.QListView.LeftToRight)
-        #self.list_widget.setViewMode(Qtw.QListView.IconMode)
+        self.timeLine = Qtw.QListWidget()
+        self.timeLine.setFlow(Qtw.QListView.LeftToRight)
+        self.timeLine.setDragDropMode(Qtw.QAbstractItemView.InternalMove)
+        self.layout.addWidget(self.timeLine)
 
-        for x in range(1, 10):
-            self.list_widget.addItem(Qtw.QListWidgetItem("hey {}".format(x)))
+        self.frameList = [] #Store all frames
+        for i in range(10):
+            self.frameList.append(CubeLEDFrame("{}".format(i), 8,8,8,self.timeLine,self))
+         
     
-        itm2 = Qtw.QListWidgetItem(icon, "name", self.list_widget )
-        itm1 = Qtw.QListWidgetItem(None, self.list_widget)
-        itm1.setSizeHint(QtCore.QSize(200,200))
-        #self.list_widget.addItem(itm1)
-        #self.list_widget.addItem(itm2)
-        self.list_widget.setItemWidget(itm1, Qtw.QPushButton("Hello there!"))
-
-        # Enable drag & drop ordering of items.
-        self.list_widget.setDragDropMode(Qtw.QAbstractItemView.InternalMove)
-
-        self.widget_layout.addWidget(self.list_widget)
-        self.setLayout(self.widget_layout)
+    def getCurrentCubePixmap(self) -> QPixmap:
+        return self.parent.getCurrentCubePixmap()
 
 
 
 class Animator(Qtw.QWidget):
     def __init__(self,parent=None):
         super(Qtw.QWidget, self).__init__(parent)
-        self._parent = parent
+        self.parent = parent
+        
+        self.cubeSize = CubeSize(8,8,8)
 
         self.mainLayout=Qtw.QGridLayout(self)
         self.setLayout(self.mainLayout)
 
-        self.frameCreator = FrameCreator(self)
+        self.frameCreator = FrameCreator(CubeLEDFrame_DATA(8,8,8) ,self.cubeSize,self)
         self.mainLayout.addWidget(self.frameCreator,0,0)
 
-        self.anim = AnimationList(QIcon(self.frameCreator.view.getCurrentFramePixmap(QtCore.QSize(200,200))), self)
+        self.anim = AnimationList(self)
         self.mainLayout.addWidget(self.anim,1,0)
     
-
-
+    def getCurrentCubePixmap(self) -> QPixmap:
+        return self.frameCreator.cubeViewer.getCurrentFramePixmap(QtCore.QSize(200,200))
     
+
+
 class MainWindow(Qtw.QWidget):
     def __init__(self):
         super().__init__()
-        
+
+        self.setWindowTitle("CubAnimate")
 
         self.mainLayout=Qtw.QGridLayout(self)
         self.setLayout(self.mainLayout)
@@ -585,6 +629,9 @@ class MainWindow(Qtw.QWidget):
         self.animator = Animator(self)
         self.mainLayout.addWidget(self.animator,0,0)
 
+        self.resize(self.screen().size()) #Do not delete if you want the window to maximized ... damn bug
+
+        
         #SPACERS
         self.lowSpacer = Qtw.QSpacerItem(20, 40, Qtw.QSizePolicy.Minimum, Qtw.QSizePolicy.Expanding)
         self.mainLayout.addItem(self.lowSpacer,1,0)
