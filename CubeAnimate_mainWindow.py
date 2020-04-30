@@ -156,10 +156,18 @@ class CubeViewer3D(Qtw.QWidget):
         return self.parent.getCurrentColor()
     
     def getCurrentFramePixmap(self, size : QtCore.QSize) -> QPixmap :
+
+        xRot = self.graph.scene().activeCamera().xRotation()
+        yRot = self.graph.scene().activeCamera().yRotation()
         zoom = self.graph.scene().activeCamera().zoomLevel()
+        self.graph.scene().activeCamera().setCameraPosition(300,20)
         self.graph.scene().activeCamera().setZoomLevel(self.imageZoom)
+
         image = self.graph.renderToImage(2,size)
+
+        self.graph.scene().activeCamera().setCameraPosition(xRot,yRot)
         self.graph.scene().activeCamera().setZoomLevel(zoom)
+
         return QPixmap.fromImage(image)
 
 
@@ -179,13 +187,13 @@ class CubeLEDFrame_DATA:
                 for k in range(self.cubeSize.getSize(Axis.Z)):
                     self.LEDcolors[i][j].append(self.nullColor)
     
-    def setColorLED(self, x , y :int, z :int, color : QColor):
+    def setColorLED(self, x:int, y:int, z:int, color : QColor):
         if self.cubeSize.pointDefined(x,y,z):
             self.LEDcolors[x][y][z] = color
         else:
             print("No matching LED")
     
-    def eraseColorLED(self, x :int, y :int, z :int):
+    def eraseColorLED(self, x:int, y :int, z :int):
         if self.cubeSize.pointDefined(x,y,z):
             self.LEDcolors[x][y][z] = self.nullColor
         else:
@@ -450,17 +458,19 @@ class CubeFullView(Qtw.QTabWidget):
     """ 3 tabs containing a representation of the cube sliced along each axis.
     
     Attributes:
-        cubeSize (dict[Axis,int]): Number of LEDs along each axis of the cube.
+        cubeSize (CubeSize)): Number of LEDs along each axis.
     """
 
     def __init__(self, cubeSize:CubeSize, newColor_signal:QtCore.pyqtSignal, eraseColor_signal:QtCore.pyqtSignal, parent):
         """
         Args:
-            x, y, z (int)): Number of LEDs along each axis.
+            cubeSize (CubeSize)): Number of LEDs along each axis.
+            newColor_signal (QtCore.pyqtSignal(int,int,int,QColor)): Signal sended when the led at the given position has a new color.
+            eraseColor_signal (QtCore.pyqtSignal(int,int,int)): Signal sended when the led at the given position is erased.
             parent (QWidget): Need a method getCurrentColor()->QColor.
         """
         super(Qtw.QTabWidget, self).__init__(parent)
-        self._parent = parent
+        self.parent = parent
 
         self.newColor_signal = newColor_signal
         self.eraseColor_signal = eraseColor_signal
@@ -469,7 +479,7 @@ class CubeFullView(Qtw.QTabWidget):
         self.createTabs(self.cubeSize)
     
     def getCurrentColor(self) -> QColor :
-        return self._parent.getCurrentColor()
+        return self.parent.getCurrentColor()
     
     def erase(self):
         """Clean up all widgets and tabs."""
@@ -482,7 +492,7 @@ class CubeFullView(Qtw.QTabWidget):
         """Creates three representations along each axis in different tabs.
 
         Args:
-            x, y, z (int)): Number of LEDs along each axis.
+            cubeSize (CubeSize)): Number of LEDs along each axis.
         """
         self.cubeSize = cubeSize
 
@@ -502,6 +512,17 @@ class CubeFullView(Qtw.QTabWidget):
 
 
 class FrameCreator(Qtw.QWidget):
+    """ Widget alowing the user to modify the currently selected frame.
+    
+    Attributes:
+        frame (CubeLEDFrame_DATA): Currently modified frame.
+        cubeSize (CubeSize): Number of LEDs along each axis.
+        colorPicker (ColorPicker): Widget to select the painting color.
+        cubeViewer (CubeViewer3D): Widget showing the cube in 3D.
+        cubeSliced (CubeFullView): Widget showing the sliced cube.
+        newColor_signal (QtCore.pyqtSignal(int,int,int,QColor)): Signal sended when the led at the given position has a new color.
+        eraseColor_signal (QtCore.pyqtSignal(int,int,int)): Signal sended when the led at the given position is erased.
+    """
     
     newColorLED_signal = QtCore.pyqtSignal(int,int,int, QColor)
     eraseColorLED_signal = QtCore.pyqtSignal(int,int,int)
@@ -521,21 +542,21 @@ class FrameCreator(Qtw.QWidget):
         self.cubeViewer = CubeViewer3D(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
         self.layout.addWidget(self.cubeViewer,0,1)
         
-        self.cube = CubeFullView(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
-        self.layout.addWidget(self.cube,1,0,1,3)
+        self.cubeSliced = CubeFullView(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
+        self.layout.addWidget(self.cubeSliced,1,0,1,3)
 
         self.newColorLED_signal.connect(self.frame.setColorLED)
         self.eraseColorLED_signal.connect(self.frame.eraseColorLED)
 
-        #self.upperRightSpacer = Qtw.QSpacerItem(20, 40, Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Minimum)
-        #self.layout.addItem(self.upperRightSpacer,0,2)
     
     def getCurrentColor(self) -> QColor :
         return self.colorPicker.getColor()
     
     def changeCurrentFrame(self, newFrameData : CubeLEDFrame_DATA):
+        """ Change the modified frame."""
         size = newFrameData.getSize()
         if self.frame.getSize() == size:
+            self.frame
             self.newColorLED_signal.disconnect(self.frame.setColorLED)
             self.eraseColorLED_signal.disconnect(self.frame.eraseColorLED)
 
@@ -556,6 +577,15 @@ class FrameCreator(Qtw.QWidget):
 
 
 class CubeLEDFrame(Qtw.QListWidgetItem):
+    """ Item to use in an AnimationList object. Represent a frame in the timeline.
+    
+    Attributes:
+        name (str): Name of the frame.
+        frameDate (CubeLEDFrame_DATA): Currently modified frame.
+        cubeSize (CubeSize): Number of LEDs along each axis.
+        illustration (QLabel): Consist of a representation (QPixmap) of the frame associated.
+    """
+
     def __init__(self, name : str, cubeSize:CubeSize, parentList, parent):
         super(Qtw.QListWidgetItem, self).__init__(None,parentList)
         self.parentList = parentList
@@ -564,8 +594,7 @@ class CubeLEDFrame(Qtw.QListWidgetItem):
         
         self.frameData = CubeLEDFrame_DATA(cubeSize)
         self.setSizeHint(QtCore.QSize(200,200))
-
-        #self.frame =  Qtw.QWidget()
+ 
         self.frame =  Qtw.QGroupBox(self.name)
         self.layout = Qtw.QVBoxLayout()
         self.frame.setLayout(self.layout)
@@ -573,25 +602,35 @@ class CubeLEDFrame(Qtw.QListWidgetItem):
         self.illustration = Qtw.QLabel()
         self.layout.addWidget(self.illustration)
 
-        #self.updateIllustration()
-        
         self.parentList.setItemWidget(self,self.frame)
-    
-    def updateIllustration(self):
-        self.illustration.setPixmap(self.getCurrentCubePixmap()) 
     
     def setIllustration(self, image : QPixmap):
         self.illustration.setPixmap(image) 
-    
-    def getCurrentCubePixmap(self) -> QPixmap:
-        return self.parent.getCurrentCubePixmap()
 
-    def getFrameDate(self) -> CubeLEDFrame_DATA:
+    def getFrameData(self) -> CubeLEDFrame_DATA:
         return self.frameData
 
 
+class SquarePushButton(Qtw.QPushButton):
+    def __init__(self, label:str, parent):
+        super(Qtw.QPushButton, self).__init__(label, parent)
+        self.parent = parent
+        self.setSizePolicy(Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Expanding)
+
+    def resizeEvent(self, event):
+        aspectRatio = 1.0
+        h = self.parent.size().height()
+        w = int(aspectRatio*h)
+        self.setMinimumSize(QtCore.QSize(h,w))
+        self.resize(w, h)
+
 
 class AnimationList(Qtw.QWidget):
+    """ Widget allowing the user to create a new frame, select the currently modified frame and reorganize them.
+    
+    Attributes:
+        frameList (List[CubeLEDFrame]): Store all frames of the animation.
+    """
     def __init__(self, cubeSize:CubeSize,parent):
         super(Qtw.QWidget, self).__init__(parent)
         self.parent = parent
@@ -600,40 +639,42 @@ class AnimationList(Qtw.QWidget):
         self.setLayout(self.layout)
 
         self.timeLine = Qtw.QListWidget()
+
         self.timeLine.setFlow(Qtw.QListView.LeftToRight)
         self.timeLine.setDragDropMode(Qtw.QAbstractItemView.InternalMove)
         self.layout.addWidget(self.timeLine)
+        self.layout.setStretchFactor(self.timeLine,1)
 
-        self.addFrameButton = Qtw.QPushButton("Add frame !")
+        self.addFrameButton = SquarePushButton("Add frame !", self)
         self.layout.addWidget(self.addFrameButton)
 
         self.frameList = [] #Store all frames
-
-        #for i in range(10):
-        #    self.frameList.append(CubeLEDFrame("{}".format(i), cubeSize, self.timeLine, self))
     
-    def getCurrentCubePixmap(self) -> QPixmap:
-        return self.parent.getCurrentCubePixmap()
-    
-    def changeFrameSelected(self):
-        selectionList = self.timeLine.selectedItems()
-        print(selectionList[0].name)
+    def changeFrameSelected(self, frame : CubeLEDFrame):
+        self.timeLine.setCurrentItem(frame)
 
 
 
 class Animator(Qtw.QWidget):
+    """ Main widget allowing the user to create animations.
+    
+    Attributes:
+        cubeSize (CubeSize)): Number of LEDs along each axis.
+        blankIllustration (QPixmap): Default illustration to use when a new frame is created.
+    """
     def __init__(self,parent=None):
         super(Qtw.QWidget, self).__init__(parent)
         self.parent = parent
-        
-        self.cubeSize = CubeSize(8,8,8)
+        self.cubeSize = CubeSize(8,16,8)
 
         self.mainLayout=Qtw.QGridLayout(self)
         self.setLayout(self.mainLayout)
 
         self.animationViewer = AnimationList(self.cubeSize, self)
         
-        self.frameCreator = FrameCreator(self.addFrame(), self.cubeSize, self)
+        self.currentSelectedFrame = self.addFrame()
+        
+        self.frameCreator = FrameCreator(self.currentSelectedFrame.getFrameData(), self.cubeSize, self)
         self.blankIllustration = self.getCurrentCubePixmap()
         self.animationViewer.frameList[0].setIllustration(self.blankIllustration)
         
@@ -647,17 +688,23 @@ class Animator(Qtw.QWidget):
         return self.frameCreator.cubeViewer.getCurrentFramePixmap(QtCore.QSize(200,200))
     
     def changeCurrentFrame(self):
+        print(self.animationViewer.timeLine.currentRow())
+
         selectionList = self.animationViewer.timeLine.selectedItems()
-        self.frameCreator.changeCurrentFrame(selectionList[0].getFrameDate())
+        self.currentSelectedFrame.setIllustration(self.getCurrentCubePixmap()) #Update illustration of the leaved frame
+        self.currentSelectedFrame = selectionList[0]
+        self.frameCreator.changeCurrentFrame(self.currentSelectedFrame.getFrameData())
     
     def addFrame(self):
         num = len(self.animationViewer.frameList)
         self.animationViewer.frameList.append(CubeLEDFrame('#{}'.format(num+1), self.cubeSize, self.animationViewer.timeLine, self.animationViewer))
-        try: #Do not work on first layer bc frameCreator not instantiated yet
+        self.animationViewer.changeFrameSelected(self.animationViewer.frameList[num])
+
+        try: #Do not work on first layer bc frameCreator is not instantiated yet.
             self.animationViewer.frameList[num].setIllustration(self.blankIllustration)
         except:
             pass
-        return self.animationViewer.frameList[num].getFrameDate() #Return data of the added frame
+        return self.animationViewer.frameList[num] #Return data of the added frame.
     
 
 
@@ -672,8 +719,8 @@ class MainWindow(Qtw.QWidget):
 
         self.animator = Animator(self)
         self.mainLayout.addWidget(self.animator,0,0)
-
-        self.resize(self.screen().size()) #Do not delete if you want the window to maximized ... damn bug
+        
+        self.resize(self.screen().size()*0.9) #Do not delete if you want the window to maximized ... damn bug
 
         
         #SPACERS
