@@ -511,71 +511,6 @@ class CubeFullView(Qtw.QTabWidget):
 
 
 
-class FrameCreator(Qtw.QWidget):
-    """ Widget alowing the user to modify the currently selected frame.
-    
-    Attributes:
-        frame (CubeLEDFrame_DATA): Currently modified frame.
-        cubeSize (CubeSize): Number of LEDs along each axis.
-        colorPicker (ColorPicker): Widget to select the painting color.
-        cubeViewer (CubeViewer3D): Widget showing the cube in 3D.
-        cubeSliced (CubeFullView): Widget showing the sliced cube.
-        newColor_signal (QtCore.pyqtSignal(int,int,int,QColor)): Signal sended when the led at the given position has a new color.
-        eraseColor_signal (QtCore.pyqtSignal(int,int,int)): Signal sended when the led at the given position is erased.
-    """
-    
-    newColorLED_signal = QtCore.pyqtSignal(int,int,int, QColor)
-    eraseColorLED_signal = QtCore.pyqtSignal(int,int,int)
-
-    def __init__(self, frame : CubeLEDFrame_DATA, cubeSize : CubeSize, parent=None):
-        super(Qtw.QWidget, self).__init__(parent)
-        self.parent = parent
-        self.frame = frame
-        self.cubeSize = cubeSize
-
-        self.layout=Qtw.QGridLayout(self)
-        self.setLayout(self.layout)
-
-        self.colorPicker = ColorPicker(self)
-        self.layout.addWidget(self.colorPicker,0,0)
-
-        self.cubeViewer = CubeViewer3D(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
-        self.layout.addWidget(self.cubeViewer,0,1)
-        
-        self.cubeSliced = CubeFullView(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
-        self.layout.addWidget(self.cubeSliced,1,0,1,3)
-
-        self.newColorLED_signal.connect(self.frame.setColorLED)
-        self.eraseColorLED_signal.connect(self.frame.eraseColorLED)
-
-    
-    def getCurrentColor(self) -> QColor :
-        return self.colorPicker.getColor()
-    
-    def changeCurrentFrame(self, newFrameData : CubeLEDFrame_DATA):
-        """ Change the modified frame."""
-        size = newFrameData.getSize()
-        if self.frame.getSize() == size:
-            self.frame
-            self.newColorLED_signal.disconnect(self.frame.setColorLED)
-            self.eraseColorLED_signal.disconnect(self.frame.eraseColorLED)
-
-            for x in range(size.getSize(Axis.X)):
-                for y in range(size.getSize(Axis.Y)):
-                    for z in range(size.getSize(Axis.Z)):
-                        newColor = newFrameData.getColorLED(x,y,z)
-                        if self.frame.getColorLED(x,y,z) != newColor:  #Great gain in refresh speed if the frames are similare
-                            self.newColorLED_signal.emit(x,y,z, newColor)
-
-            self.frame = newFrameData
-
-            self.newColorLED_signal.connect(self.frame.setColorLED)
-            self.eraseColorLED_signal.connect(self.frame.eraseColorLED)
-        else:
-            print("Cube size incompatibility")
-
-
-
 class CubeLEDFrame(Qtw.QListWidgetItem):
     """ Item to use in an AnimationList object. Represent a frame in the timeline.
     
@@ -631,7 +566,7 @@ class AnimationList(Qtw.QWidget):
     Attributes:
         frameList (List[CubeLEDFrame]): Store all frames of the animation.
     """
-    def __init__(self, cubeSize:CubeSize,parent):
+    def __init__(self, cubeSize:CubeSize,parent=None):
         super(Qtw.QWidget, self).__init__(parent)
         self.parent = parent
 
@@ -661,50 +596,84 @@ class Animator(Qtw.QWidget):
     Attributes:
         cubeSize (CubeSize)): Number of LEDs along each axis.
         blankIllustration (QPixmap): Default illustration to use when a new frame is created.
+        self.currentSelectedFrame (CubeLEDFrame): Currently modified frame.
+        colorPicker (ColorPicker): Widget to select the painting color.
+        cubeViewer (CubeViewer3D): Widget showing the cube in 3D.
+        cubeSliced (CubeFullView): Widget showing the sliced cube.
+        newColorLED_signal (QtCore.pyqtSignal(int,int,int,QColor)): Signal sended when the led at the given position has a new color.
+        eraseColorLED_signal (QtCore.pyqtSignal(int,int,int)): Signal sended when the led at the given position is erased.
     """
+    
+    newColorLED_signal = QtCore.pyqtSignal(int,int,int, QColor)
+    eraseColorLED_signal = QtCore.pyqtSignal(int,int,int)
+
     def __init__(self,parent=None):
         super(Qtw.QWidget, self).__init__(parent)
         self.parent = parent
-        self.cubeSize = CubeSize(8,16,8)
-
+        self.cubeSize = CubeSize(8,8,8)
         self.mainLayout=Qtw.QGridLayout(self)
         self.setLayout(self.mainLayout)
 
-        self.animationViewer = AnimationList(self.cubeSize, self)
-        
-        self.currentSelectedFrame = self.addFrame()
-        
-        self.frameCreator = FrameCreator(self.currentSelectedFrame.getFrameData(), self.cubeSize, self)
-        self.blankIllustration = self.getCurrentCubePixmap()
-        self.animationViewer.frameList[0].setIllustration(self.blankIllustration)
-        
-        self.mainLayout.addWidget(self.frameCreator,0,0)
-        self.mainLayout.addWidget(self.animationViewer,1,0)
+        #Widget instantiation
+        self.colorPicker = ColorPicker(self)
+        self.mainLayout.addWidget(self.colorPicker,0,0)
 
+        self.cubeViewer = CubeViewer3D(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
+        self.mainLayout.addWidget(self.cubeViewer,0,1)
+        
+        self.cubeSliced = CubeFullView(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
+        self.mainLayout.addWidget(self.cubeSliced,1,0,1,3)
+
+        self.animationViewer = AnimationList(self.cubeSize)
+        self.mainLayout.addWidget(self.animationViewer,2,0)
+
+        self.blankIllustration = self.getCurrentCubePixmap()
+        self.currentSelectedFrame = self.addFrame()
+
+        #Signal connection
+        self.newColorLED_signal.connect(self.currentSelectedFrame.getFrameData().setColorLED)
+        self.eraseColorLED_signal.connect(self.currentSelectedFrame.getFrameData().eraseColorLED)
         self.animationViewer.addFrameButton.clicked.connect(self.addFrame)
         self.animationViewer.timeLine.itemSelectionChanged.connect(self.changeCurrentFrame)
     
+    def getCurrentColor(self) -> QColor:
+        """ Return the color selected in the widget colorPicker(ColorPicker)."""
+        return self.colorPicker.getColor()
+    
     def getCurrentCubePixmap(self) -> QPixmap:
-        return self.frameCreator.cubeViewer.getCurrentFramePixmap(QtCore.QSize(200,200))
+        """ Return the vizualisation of the widget cubeViewer(CubeViewer3D)."""
+        return self.cubeViewer.getCurrentFramePixmap(QtCore.QSize(200,200))
     
     def changeCurrentFrame(self):
-        print(self.animationViewer.timeLine.currentRow())
-
-        selectionList = self.animationViewer.timeLine.selectedItems()
+        """ Change the frame being edited."""
         self.currentSelectedFrame.setIllustration(self.getCurrentCubePixmap()) #Update illustration of the leaved frame
-        self.currentSelectedFrame = selectionList[0]
-        self.frameCreator.changeCurrentFrame(self.currentSelectedFrame.getFrameData())
+        newFrame = self.animationViewer.timeLine.selectedItems()[0] 
+        newFrameData = newFrame.getFrameData()
+        newSize = newFrameData.getSize()
+
+        if self.currentSelectedFrame.getFrameData().getSize() == newSize: #Verify size compatibility
+            self.newColorLED_signal.disconnect(self.currentSelectedFrame.getFrameData().setColorLED) #Disconnect old frame
+            self.eraseColorLED_signal.disconnect(self.currentSelectedFrame.getFrameData().eraseColorLED)
+            for x in range(newSize.getSize(Axis.X)):
+                for y in range(newSize.getSize(Axis.Y)):
+                    for z in range(newSize.getSize(Axis.Z)):
+                        newColor = newFrameData.getColorLED(x,y,z)
+                        if self.currentSelectedFrame.getFrameData().getColorLED(x,y,z) != newColor:  #Great gain in refresh speed if the frames are similare
+                            self.newColorLED_signal.emit(x,y,z, newColor)
+
+            self.currentSelectedFrame = newFrame
+            self.newColorLED_signal.connect(self.currentSelectedFrame.getFrameData().setColorLED) #Connect new frame
+            self.eraseColorLED_signal.connect(self.currentSelectedFrame.getFrameData().eraseColorLED)
+        else:
+            print("Cube size incompatibility")
     
     def addFrame(self):
+        """ Create and add a new frame to the animation."""
         num = len(self.animationViewer.frameList)
         self.animationViewer.frameList.append(CubeLEDFrame('#{}'.format(num+1), self.cubeSize, self.animationViewer.timeLine, self.animationViewer))
         self.animationViewer.changeFrameSelected(self.animationViewer.frameList[num])
-
-        try: #Do not work on first layer bc frameCreator is not instantiated yet.
-            self.animationViewer.frameList[num].setIllustration(self.blankIllustration)
-        except:
-            pass
-        return self.animationViewer.frameList[num] #Return data of the added frame.
+        self.animationViewer.frameList[num].setIllustration(self.blankIllustration)
+        return self.animationViewer.frameList[num]
     
 
 
