@@ -9,20 +9,23 @@ from PyQt5 import QtGui, QtCore
 from PyQt5 import QtWidgets as Qtw
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QMainWindow, QPushButton, QAction, QLineEdit, QMessageBox
+from PyQt5.QtDataVisualization import *
 
 from numpy import *
 from Equation import *
 
 ## Add functions/constants/operators to the list of those that can be displayed ##
-'''Already implemented in Equation module : floor, ceil, round, sin, cos, tan, im, re, sqrt
-   Already implemented in Equation module : pi, e, Inf, NaN
-   Already implemented in Equation module : +, -, *, /, ^, **, &, |, </>, &|, |&, ==, =, ~, !~, <>, ><, <=, >=, <~, >~, ~<, ~>, !'''
+'''Already implemented functions : floor, ceil, round, sin, cos, tan, im, re, sqrt
+   Already implemented constants : pi, e, Inf, NaN
+   Already implemented operators : +, -, *, /, ^, **, &, |, </>, &|, |&, ==, =, ~, !~, <>, ><, <=, >=, <~, >~, ~<, ~>, !'''
 
 from Equation.util import addFn, addConst, addOp
 
 addFn('exp',"exp({0:s})","\\exp\\left({0:s}\\right)",1,exp)
 addFn('ln',"ln({0:s})","\\ln\\left({0:s}\\right)",1,log)
 addFn('log',"log({0:s})","\\log\\left({0:s}\\right)",1,log10)
+addFn('arccos',"arccos({0:s})","\\arccos\\left({0:s}\\right)",1,arccos)
+addFn('arcsin',"arcsin({0:s})","\\arcsin\\left({0:s}\\right)",1,arcsin)
 
 ## Useful functions ##
 
@@ -67,6 +70,11 @@ def mathTex_to_QPixmap(mathTex, fs):
 
     return qpixmap
 
+    def plot3D(func,cubesize):
+        ''' E/ func: fonction dont on veut generer l apercu
+        E/ cubesize: liste de 3 entiers (tailleX,tailleY,tailleZ) pour savoir la taille de l apercu a generer '''
+    return None 
+
 ## Useful classes ## 
 
 class MainWindow(Qtw.QWidget):
@@ -78,25 +86,38 @@ class MainWindow(Qtw.QWidget):
         self.mainLayout=Qtw.QGridLayout(self)
         self.setLayout(self.mainLayout)
 
-        self.viewer = Qtw.QLabel("Hello")
+        self.viewer = Qtw.QLabel()
         self.viewer.setPixmap(mathTex_to_QPixmap('$ ... $', 15))
-        self.mainLayout.addWidget(self.viewer,1,0)
+        self.mainLayout.addWidget(self.viewer,2,0)
+
+        # Create label
+        self.mainlabel = Qtw.QLabel("Type your equation here:")
+        self.mainLayout.addWidget(self.mainlabel,0,0)
 
         # Create textbox
         self.textbox = QLineEdit(self)
-        self.mainLayout.addWidget(self.textbox,0,0)
+        self.mainLayout.addWidget(self.textbox,1,0)
+
+        # Create graph visualizer
+        self.graph = Q3DScatter()
+        self.graphvisualizer = Qtw.QWidget.createWindowContainer(self.graph)
+        self.mainLayout.addWidget(self.graphvisualizer,3,0)
         
         # Create a button in the window
         self.button = QPushButton('Display equation', self)
-        self.mainLayout.addWidget(self.button,0,1)
+        self.mainLayout.addWidget(self.button,1,1)
 
-        # connect button to function on_click
+        # Connect button to function on_click
         self.button.clicked.connect(self.on_click)
+
+        # Connect the enter key to funtion on_click
+        ''' a faire'''
     
     @pyqtSlot()
     def on_click(self):
         f = Expression(self.textbox.text(),["x","y","z","t"])
-        self.viewer.setPixmap(mathTex_to_QPixmap('$' + str(f) + '$',25))
+        self.viewer.setPixmap(mathTex_to_QPixmap('$' + str(f) + '$',15))
+
 
 ## What is actually running ##
 
