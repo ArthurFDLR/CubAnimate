@@ -5,7 +5,7 @@ from PyQt5.QtDataVisualization import (Q3DCamera, Q3DTheme, Q3DScatter,
                                        QAbstract3DGraph, QAbstract3DSeries, QScatter3DSeries,
                                        QScatterDataItem, QScatterDataProxy, QCustom3DItem)
 
-from Utils import *
+from CustomWidgets.CTypes import *
 
 class ScatterDataModifier(QtCore.QObject):
     def __init__(self, x : int, y : int, z : int, newColor_signal:QtCore.pyqtSignal, eraseColor_signal:QtCore.pyqtSignal, scatter, parent):
