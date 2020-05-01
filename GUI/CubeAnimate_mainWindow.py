@@ -515,33 +515,61 @@ class Animator(Qtw.QWidget):
         return self.animationViewer.frameList[num]
 
 
-class DrawerWidget(Qtw.QWidget):
-    def __init__(self, *args, **kwargs):
-        super(DrawerWidget, self).__init__(*args, **kwargs)
+class MainMenu(Qtw.QWidget):
+    def __init__(self, parent):
+        super(Qtw.QWidget, self).__init__(parent)
+        self.parent = parent
         self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
-        self.setStyleSheet('DrawerWidget{background:white;}')
+        self.setStyleSheet('MainMenu{background:white;}')
         layout = Qtw.QVBoxLayout(self)
         layout.addWidget(Qtw.QLineEdit(self))
-        layout.addWidget(Qtw.QPushButton('Hello there', self))
+
+        self.animatorButton = Qtw.QPushButton('Animator', self, clicked=self.displayAnimator)
+        layout.addWidget(self.animatorButton)
+
+        self.labelButton = Qtw.QPushButton('Label', self, clicked=self.displayLabel)
+        layout.addWidget(self.labelButton)
+
+    def displayAnimator(self):
+        self.parent.changeWindow(0)
+    
+    def displayLabel(self):
+        self.parent.changeWindow(1)
 
 
 class MainWindow(Qtw.QWidget):
     def __init__(self):
         super().__init__()
-
         self.setWindowTitle("CubAnimate")
 
+        ## Windows instantiation
+        self.animator = Animator(self)
+        self.widgetExample = Qtw.QLabel("Hello there!")
+
+        ## Main menu
+        self.drawerMenu = CDrawer(self, direction=CDrawer.LEFT)
+        self.mainMenu = MainMenu(self)
+        self.drawerMenu.setWidget(self.mainMenu)
+
+        ## Windows manager
+        self.leftlist = Qtw.QListWidget()
+        self.leftlist.insertItem(0, 'Animator' )
+        self.leftlist.insertItem(1, 'Label' )
+        self.Stack = Qtw.QStackedWidget(self)
+        self.Stack.addWidget(self.animator)
+        self.Stack.addWidget(self.widgetExample)
+
+        ## MainWindow layout
         self.mainLayout=Qtw.QGridLayout(self)
         self.setLayout(self.mainLayout)
 
-        self.animator = Animator(self)
-        self.mainLayout.addWidget(self.animator,0,0)
-        
-        self.mainLayout.addWidget(Qtw.QPushButton('Open menu', self, clicked=self.openMainMenu))
+        self.mainLayout.addWidget(self.Stack,0,1)        
+        self.mainLayout.addWidget(Qtw.QPushButton('Open menu', self, clicked=self.openMainMenu), 0, 0)
 
         self.resize(self.screen().size()*0.8) #Do not delete if you want the window to maximized ... damn bug
     
     def openMainMenu(self):
-        self.leftDrawer = CDrawer(self, direction=CDrawer.LEFT)
-        self.leftDrawer.setWidget(DrawerWidget(self.leftDrawer))
-        self.leftDrawer.show()
+        self.drawerMenu.show()
+    
+    def changeWindow(self,i):
+        self.Stack.setCurrentIndex(i)
