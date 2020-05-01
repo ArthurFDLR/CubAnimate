@@ -1,179 +1,16 @@
-
 from PyQt5 import QtWidgets as Qtw
 from PyQt5 import QtCore
 from PyQt5.QtGui import QColor, QFont, QVector3D, QPixmap, QIcon
-from PyQt5.QtDataVisualization import (Q3DCamera, Q3DTheme, Q3DScatter,
-                                       QAbstract3DGraph, QAbstract3DSeries, QScatter3DSeries,
-                                       QScatterDataItem, QScatterDataProxy, QCustom3DItem)
 
-from enum import Enum
-
-
-
-class Axis(Enum):
-    X = 0
-    Y = 1
-    Z = 2
-
-
-
-class CubeSize:
-    def __init__(self, x: int = 0, y: int = 0, z: int = 0):
-        self.size = {}
-        self.size[Axis.X] = max(0,x)
-        self.size[Axis.Y] = max(0,y)
-        self.size[Axis.Z] = max(0,z)
-    
-    def getSize(self, axis : Axis) -> int:
-        return self.size[axis]
-
-    def setSize(self, axis : Axis, size : int):
-        self.size[axis] = max(0,size)
-    
-    def pointDefined(self, x:int, y:int, z:int) -> bool:
-        return x < self.size[Axis.X] and y < self.size[Axis.Y] and z < self.size[Axis.Z]
-
-
-
-class ScatterDataModifier(QtCore.QObject):
-    def __init__(self, x : int, y : int, z : int, newColor_signal:QtCore.pyqtSignal, eraseColor_signal:QtCore.pyqtSignal, scatter, parent):
-        super(ScatterDataModifier, self).__init__()
-
-        self.parent = parent
-        self.eraseColor_signal = eraseColor_signal
-        self.newColor_signal = newColor_signal
-        self.eraseColor_signal.connect(self.eraseColor)
-        self.newColor_signal.connect(self.changeColor)
-
-        self.nullColor = QColor(255,255,255)
-        self.nullColor.setAlpha(100)
-
-        #Graphics
-        self.m_graph = scatter
-        self.m_fontSize = 40.0
-        
-        self.m_graph.setSelectionMode(QAbstract3DGraph.SelectionItem)
-        self.m_graph.activeTheme().setType(Q3DTheme.ThemeDigia)
-        font = self.m_graph.activeTheme().font()
-        font.setPointSize(self.m_fontSize)
-        self.m_graph.activeTheme().setFont(font)
-        self.m_graph.activeTheme().setColorStyle(Q3DTheme.ColorStyleUniform)
-        self.m_graph.activeTheme().setSingleHighlightColor(self.nullColor)
-        self.m_graph.setShadowQuality(QAbstract3DGraph.ShadowQualitySoftLow)
-
-        self.m_graph.scene().activeCamera().setCameraPreset(Q3DCamera.CameraPresetIsometricRight)
-        self.m_graph.scene().activeCamera().setCameraPosition(300,20)
-        self.m_graph.scene().activeCamera().setZoomLevel(150)
-
-        self.m_graph.axisX().setTitle("X")
-        self.m_graph.axisX().setSegmentCount(x-1)
-        self.m_graph.axisY().setTitle("Y")
-        self.m_graph.axisY().setSegmentCount(y-1)
-        self.m_graph.axisZ().setTitle("Z")
-        self.m_graph.axisZ().setSegmentCount(z-1)
-
-        self.matrixLEDserie = []
-        
-        count = 0
-        for i in range(x):
-            self.matrixLEDserie.append([])
-            for j in range(y):
-                self.matrixLEDserie[i].append([])
-                for k in range(z):
-                    
-                    item = QScatterDataItem(QVector3D(i,k,j)) # z-axis and y-axis to match representations, purely graphic
-
-                    self.matrixLEDserie[i][j].append(QScatter3DSeries(QScatterDataProxy()))
-
-                    self.matrixLEDserie[i][j][k].setItemLabelFormat("@xTitle: @xLabel @yTitle: @yLabel @zTitle: @zLabel")
-                    self.matrixLEDserie[i][j][k].setMeshSmooth(True)
-                    self.matrixLEDserie[i][j][k].setName(str(i) + " " + str(j) + " " + str(k))
-                    
-                    self.m_graph.addSeries(self.matrixLEDserie[i][j][k])
-                    
-                    self.m_graph.seriesList()[count].dataProxy().addItem(item)
-                    self.m_graph.seriesList()[count].setBaseColor(self.nullColor)
-                    self.m_graph.seriesList()[count].setItemSize(1.2/max(x,y,z))
-                    
-                    count = count+1
-        
-        self.m_graph.selectedSeriesChanged.connect(self.ledClicked)
-
-    def ledClicked(self, serie : QAbstract3DSeries): #Colored the led if not already set to the given color, erase it otherwise
-        self.m_graph.clearSelection() #Avoid selected item color shifting
-        if serie is not None:
-            xStr,yStr,zStr = serie.name().split()
-            x = int(xStr)
-            y = int(yStr)
-            z = int(zStr)
-            currentColor = self.getCurrentColor()
-            if self.matrixLEDserie[x][y][z].baseColor() == currentColor:
-                self.eraseColor_signal.emit(int(xStr), int(yStr), int(zStr))
-            else:
-                self.newColor_signal.emit(int(xStr), int(yStr), int(zStr), currentColor)
-        
-    def changeColor(self, posX :int, posY :int, posZ :int, color : QColor):
-        print(str(posX) + " " + str(posY) + " " + str(posZ))
-        self.matrixLEDserie[posX][posY][posZ].setBaseColor(color)
-    
-    def eraseColor(self, posX :int, posY :int, posZ :int):
-        self.matrixLEDserie[posX][posY][posZ].setBaseColor(self.nullColor)
-
-    def getCurrentColor(self) -> QColor :
-        return self.parent.getCurrentColor()
-
-
-
-class CubeViewer3D(Qtw.QWidget):
-    def __init__(self, size : CubeSize, newColor_signal:QtCore.pyqtSignal, eraseColor_signal:QtCore.pyqtSignal, parent):
-        super(Qtw.QWidget, self).__init__(parent)
-        
-        self.parent = parent
-        self.graph = Q3DScatter()
-
-        self.graph.setAspectRatio(1.0)
-
-        self.currentColor = self.parent.getCurrentColor()
-
-        self.onWidget = False
-
-        self.imageZoom = 180
-
-        self.container = Qtw.QWidget.createWindowContainer(self.graph)
-
-        self.screenSize = self.graph.screen().size()
-        self.container.setMinimumSize(QtCore.QSize(self.screenSize.width() /5, self.screenSize.height() / 5))
-        self.container.setMaximumSize(self.screenSize)
-        self.container.setSizePolicy(Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Expanding)
-        self.container.setFocusPolicy(QtCore.Qt.StrongFocus)
-        
-        self.layout = Qtw.QGridLayout(self)
-        self.layout.addWidget(self.container, 0,0)
-
-        self.modifier = ScatterDataModifier(size.getSize(Axis.X), size.getSize(Axis.Y), size.getSize(Axis.Z), newColor_signal, eraseColor_signal, self.graph, self)
-    
-    def getCurrentColor(self) -> QColor :
-        return self.parent.getCurrentColor()
-    
-    def getCurrentFramePixmap(self, size : QtCore.QSize) -> QPixmap :
-
-        xRot = self.graph.scene().activeCamera().xRotation()
-        yRot = self.graph.scene().activeCamera().yRotation()
-        zoom = self.graph.scene().activeCamera().zoomLevel()
-        self.graph.scene().activeCamera().setCameraPosition(300,20)
-        self.graph.scene().activeCamera().setZoomLevel(self.imageZoom)
-
-        image = self.graph.renderToImage(2,size)
-
-        self.graph.scene().activeCamera().setCameraPosition(xRot,yRot)
-        self.graph.scene().activeCamera().setZoomLevel(zoom)
-
-        return QPixmap.fromImage(image)
-
-
+from CustomWidgets.CubeViewer3D import CubeViewer3D
+from CustomWidgets.CColorPicker.CColorPicker import CColorPicker
+from CustomWidgets.CDrawer import CDrawer
+from CustomWidgets.CTypes import *
 
 class CubeLEDFrame_DATA:
     def __init__(self, cubeSize:CubeSize):
+
+        self.illustration = None
         
         self.cubeSize = cubeSize
 
@@ -221,47 +58,6 @@ class CubeLEDFrame_DATA:
 
 
 
-class QColorDialog_noESC(Qtw.QColorDialog):
-    """ QColorDialog that cannot be closed (especially through ESC-key)."""
-    def __init__(self, parent=None):
-        super(Qtw.QColorDialog, self).__init__(parent)
-    def reject(self): 
-        pass
-
-
-
-class ColorPicker(Qtw.QGroupBox):
-    """ Turn a QColorDialog in a permanent QWidget displayable."""
-
-    def __init__(self, parent=None):
-        super(Qtw.QGroupBox, self).__init__("Color picker", parent)
-
-        policy = Qtw.QSizePolicy(Qtw.QSizePolicy.Minimum, Qtw.QSizePolicy.Minimum)
-        policy.setHeightForWidth(True)
-        self.setSizePolicy(policy)
-
-        self.layout=Qtw.QVBoxLayout(self)
-        self.setLayout(self.layout)
-
-        self.colorDialog = QColorDialog_noESC(self)
-        self.colorDialog.setWindowFlags(QtCore.Qt.Widget)
-        self.colorDialog.setOptions(Qtw.QColorDialog.DontUseNativeDialog | Qtw.QColorDialog.NoButtons)
-        self.layout.addWidget(self.colorDialog)
-
-
-    def getColor(self) -> QColor:
-        """
-        Returns:
-            QColor: Currently selected color.
-        """
-        color = self.colorDialog.currentColor()
-        if color.isValid():
-            return color
-        else:
-            return QColor(255,255,255) #White
-
-
-
 class LEDbutton(Qtw.QPushButton):
     """Representation of an LED, get the color given by the parent when clicked.
     
@@ -279,7 +75,7 @@ class LEDbutton(Qtw.QPushButton):
             parent (QWidget): Need a method getCurrentColor()->QColor.
         """
         super(Qtw.QPushButton, self).__init__(parent)
-        self._parent = parent
+        self.parent = parent
 
         self.eraseColor_signal = eraseColor_signal
         self.newColor_signal = newColor_signal
@@ -296,9 +92,9 @@ class LEDbutton(Qtw.QPushButton):
         self.setMinimumSize(20,20)
         self.aspectRatio = 1.0
         self.styleStr = "background-color: {}; border: 0px"
-        policy = Qtw.QSizePolicy(Qtw.QSizePolicy.Preferred, Qtw.QSizePolicy.Preferred)
-        policy.setHeightForWidth(True)
-        self.setSizePolicy(policy)
+        #policy = Qtw.QSizePolicy(Qtw.QSizePolicy.Preferred, Qtw.QSizePolicy.Preferred)
+        #policy.setHeightForWidth(True)
+        #self.setSizePolicy(policy)
 
         self.setStyleSheet(self.styleStr.format(self.LEDcolor.name()))
 
@@ -313,12 +109,16 @@ class LEDbutton(Qtw.QPushButton):
         self.resize(w, h)
     
     def updateCurrentColor(self):
-        self.LEDcolor = self._parent.getCurrentColor()
+        self.LEDcolor = self.parent.getCurrentColor()
 
     def mousePressEvent(self, ev):
         if ev.button() == QtCore.Qt.LeftButton:
-            #Write new color
-            self.newColor_signal.emit(self.x, self.y, self.z, self._parent.getCurrentColor())
+            newColor = self.parent.getCurrentColor()
+            if newColor == self.LEDcolor:
+                self.eraseColor_signal.emit(self.x, self.y, self.z)
+            else:
+                self.newColor_signal.emit(self.x, self.y, self.z, self.parent.getCurrentColor()) #Write new color
+            
         elif ev.button() == QtCore.Qt.RightButton:
             #Erase LED
             self.eraseColor_signal.emit(self.x, self.y, self.z)
@@ -363,9 +163,9 @@ class CubeLayerView(Qtw.QWidget):
         self.aspectRatio = self.nbrRow/self.nbrColumn
 
         self.styleStr = "background-color: {}; border: 0px"
-        policy = Qtw.QSizePolicy(Qtw.QSizePolicy.Preferred, Qtw.QSizePolicy.Preferred)
-        policy.setHeightForWidth(True)
-        self.setSizePolicy(policy)
+        #policy = Qtw.QSizePolicy(Qtw.QSizePolicy.Preferred, Qtw.QSizePolicy.Preferred)
+        #policy.setHeightForWidth(True)
+        #self.setSizePolicy(policy)
 
         self.layout=Qtw.QGridLayout(self)
         self.setLayout(self.layout)
@@ -392,6 +192,9 @@ class CubeLayerView(Qtw.QWidget):
                 self.matrixLED[i].append(LEDbutton(self.LEDcoordinate, newColor_signal, eraseColor_signal, self))
                 self.layout.addWidget(self.matrixLED[i][j],i,j)
 
+    def getCurrentColor(self) -> QColor :
+        return self._parent.getCurrentColor()
+
     def resizeEvent(self, event):
         #self.aspectRatio = nbrRow
         self.spacerRatioInvert = 60
@@ -405,10 +208,6 @@ class CubeLayerView(Qtw.QWidget):
         self.resize(w, h)
         #self.layout.setSpacing(max(w,h)/self.spacerRatioInvert)
         self.layout.setSpacing(4)
-
-
-    def getCurrentColor(self) -> QColor :
-        return self._parent.getCurrentColor()
 
 
 
@@ -430,7 +229,8 @@ class Cube3DView(Qtw.QScrollArea):
         self.layersWidget = Qtw.QWidget(self)
         self.layout=Qtw.QHBoxLayout(self)
         self.layersWidget.setLayout(self.layout)
-        self.layout.setSpacing(10)
+        self.layout.setSpacing(20)
+        
 
         self.ledLayers = []
 
@@ -439,15 +239,16 @@ class Cube3DView(Qtw.QScrollArea):
                                                 columnAxis, rowAxis, slicingAxis,
                                                 newColor_signal, eraseColor_signal, self))
             self.layout.addWidget(self.ledLayers[i])
+            self.layout.setAlignment(self.ledLayers[i], QtCore.Qt.AlignVCenter)
         
         self.setWidget(self.layersWidget)
         self.setWidgetResizable(True)
-        #self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.setMaximumHeight(400)
     
     def resizeEvent(self, event):
-        self.setMinimumHeight(self.ledLayers[0].height()*1.2)
-        self.setMaximumHeight(400)
+        screenHeight = self.screen().size().height()
+        layerHeight = self.ledLayers[0].height()
+        if screenHeight * 0.2 > layerHeight:
+            self.setMinimumHeight(layerHeight*1.2)
     
     def getCurrentColor(self) -> QColor :
         return self._parent.getCurrentColor()
@@ -477,7 +278,7 @@ class CubeFullView(Qtw.QTabWidget):
 
         self.cubeSize = cubeSize
         self.createTabs(self.cubeSize)
-    
+
     def getCurrentColor(self) -> QColor :
         return self.parent.getCurrentColor()
     
@@ -521,43 +322,55 @@ class CubeLEDFrame(Qtw.QListWidgetItem):
         illustration (QLabel): Consist of a representation (QPixmap) of the frame associated.
     """
 
-    def __init__(self, name : str, cubeSize:CubeSize, parentList, parent):
+    def __init__(self, name : str, cubeSize:CubeSize, width:int, parentList, parent):
         super(Qtw.QListWidgetItem, self).__init__(None,parentList)
         self.parentList = parentList
         self.parent = parent
         self.name = name
         
         self.frameData = CubeLEDFrame_DATA(cubeSize)
-        self.setSizeHint(QtCore.QSize(200,200))
+        self.setSizeHint(QtCore.QSize(width,width*0.9))
  
         self.frame =  Qtw.QGroupBox(self.name)
-        self.layout = Qtw.QVBoxLayout()
+        self.layout = Qtw.QHBoxLayout()
         self.frame.setLayout(self.layout)
 
-        self.illustration = Qtw.QLabel()
-        self.layout.addWidget(self.illustration)
+        self.illustration = QPixmap()
+        self.illustrationViewer = Qtw.QLabel()
+
+        self.leftSpacer = Qtw.QSpacerItem(1, 1, Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Expanding) # Spacers for centering
+        self.rightSpacer = Qtw.QSpacerItem(1, 1, Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Expanding)
+        self.layout.addItem(self.leftSpacer)
+        self.layout.addWidget(self.illustrationViewer)
+        self.layout.addItem(self.rightSpacer)
 
         self.parentList.setItemWidget(self,self.frame)
     
     def setIllustration(self, image : QPixmap):
-        self.illustration.setPixmap(image) 
+        self.illustration = image
+        self.illustrationViewer.setPixmap(self.illustration)
+    
+    def getIllustration(self):
+        return self.illustration
 
     def getFrameData(self) -> CubeLEDFrame_DATA:
         return self.frameData
+        
 
 
-class SquarePushButton(Qtw.QPushButton):
-    def __init__(self, label:str, parent):
+class ratioPushButton(Qtw.QPushButton):
+    def __init__(self, label:str, aspectRatio : float, parent):
         super(Qtw.QPushButton, self).__init__(label, parent)
+        self.aspectRatio = aspectRatio
         self.parent = parent
-        self.setSizePolicy(Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Expanding)
+        #self.setSizePolicy(Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Expanding)
 
     def resizeEvent(self, event):
-        aspectRatio = 1.0
-        h = self.parent.size().height()
-        w = int(aspectRatio*h)
-        self.setMinimumSize(QtCore.QSize(h,w))
-        self.resize(w, h)
+        w = int(self.parent.listWidth * 0.94)
+        h = int(w*self.aspectRatio)
+        self.setFixedSize(QtCore.QSize(w,h))
+        #self.resize(w, h)
+
 
 
 class AnimationList(Qtw.QWidget):
@@ -566,21 +379,29 @@ class AnimationList(Qtw.QWidget):
     Attributes:
         frameList (List[CubeLEDFrame]): Store all frames of the animation.
     """
-    def __init__(self, cubeSize:CubeSize,parent=None):
+    def __init__(self, cubeSize:CubeSize, size : int, horizontalDisplay : bool = False, parent=None):
         super(Qtw.QWidget, self).__init__(parent)
         self.parent = parent
-
-        self.layout = Qtw.QHBoxLayout()
-        self.setLayout(self.layout)
+        self.listWidth = size
 
         self.timeLine = Qtw.QListWidget()
+        if horizontalDisplay:
+            self.layout = Qtw.QHBoxLayout()
+            self.timeLine.setFlow(Qtw.QListView.LeftToRight)
+            self.addFrameButton = ratioPushButton("Add frame !", 1.0,self)
+            self.setFixedHeight(self.listWidth)
+            self.timeLine.setHorizontalScrollMode(Qtw.QAbstractItemView.ScrollPerPixel)
+        else:
+            self.layout = Qtw.QVBoxLayout()
+            self.addFrameButton = ratioPushButton("Add frame !",0.3 ,self)
+            self.setFixedWidth(self.listWidth)
+            self.timeLine.setVerticalScrollMode(Qtw.QAbstractItemView.ScrollPerPixel)
+        self.setLayout(self.layout)
 
-        self.timeLine.setFlow(Qtw.QListView.LeftToRight)
         self.timeLine.setDragDropMode(Qtw.QAbstractItemView.InternalMove)
         self.layout.addWidget(self.timeLine)
         self.layout.setStretchFactor(self.timeLine,1)
 
-        self.addFrameButton = SquarePushButton("Add frame !", self)
         self.layout.addWidget(self.addFrameButton)
 
         self.frameList = [] #Store all frames
@@ -603,34 +424,50 @@ class Animator(Qtw.QWidget):
         newColorLED_signal (QtCore.pyqtSignal(int,int,int,QColor)): Signal sended when the led at the given position has a new color.
         eraseColorLED_signal (QtCore.pyqtSignal(int,int,int)): Signal sended when the led at the given position is erased.
     """
-    
+
     newColorLED_signal = QtCore.pyqtSignal(int,int,int, QColor)
     eraseColorLED_signal = QtCore.pyqtSignal(int,int,int)
 
     def __init__(self,parent=None):
         super(Qtw.QWidget, self).__init__(parent)
+        
+        ## Attributes & Parameters
         self.parent = parent
         self.cubeSize = CubeSize(8,8,8)
-        self.mainLayout=Qtw.QGridLayout(self)
+        self.mainLayout=Qtw.QHBoxLayout(self)
         self.setLayout(self.mainLayout)
+        self.animationViewerRatio = 0.15
+        self.animatorWidth = self.screen().size().width() * self.animationViewerRatio
 
-        #Widget instantiation
-        self.colorPicker = ColorPicker(self)
-        self.mainLayout.addWidget(self.colorPicker,0,0)
-
+        ## Widget instantiation
+        self.colorPicker = CColorPicker(self)
         self.cubeViewer = CubeViewer3D(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
-        self.mainLayout.addWidget(self.cubeViewer,0,1)
-        
         self.cubeSliced = CubeFullView(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
-        self.mainLayout.addWidget(self.cubeSliced,1,0,1,3)
+        self.animationViewer = AnimationList(self.cubeSize, self.animatorWidth)
 
-        self.animationViewer = AnimationList(self.cubeSize)
-        self.mainLayout.addWidget(self.animationViewer,2,0)
+        ## Window layout
+        self.horizontlSpliter = Qtw.QSplitter(QtCore.Qt.Horizontal)
+        self.verticalSpliter = Qtw.QSplitter(QtCore.Qt.Vertical)
 
+        self.horizontlSpliter.addWidget(self.colorPicker)
+        self.horizontlSpliter.addWidget(self.cubeViewer)
+        self.horizontlSpliter.addWidget(self.animationViewer)
+        self.horizontlSpliter.setStretchFactor(0,0)
+        self.horizontlSpliter.setStretchFactor(1,1)
+        self.horizontlSpliter.setStretchFactor(2,0)
+
+        self.verticalSpliter.addWidget(self.horizontlSpliter)
+        self.verticalSpliter.addWidget(self.cubeSliced)
+        self.verticalSpliter.setStretchFactor(0,1)
+        self.verticalSpliter.setStretchFactor(1,0)
+
+        self.mainLayout.addWidget(self.verticalSpliter)
+        
+        ## Other
         self.blankIllustration = self.getCurrentCubePixmap()
         self.currentSelectedFrame = self.addFrame()
 
-        #Signal connection
+        ## Signal connection
         self.newColorLED_signal.connect(self.currentSelectedFrame.getFrameData().setColorLED)
         self.eraseColorLED_signal.connect(self.currentSelectedFrame.getFrameData().eraseColorLED)
         self.animationViewer.addFrameButton.clicked.connect(self.addFrame)
@@ -642,7 +479,8 @@ class Animator(Qtw.QWidget):
     
     def getCurrentCubePixmap(self) -> QPixmap:
         """ Return the vizualisation of the widget cubeViewer(CubeViewer3D)."""
-        return self.cubeViewer.getCurrentFramePixmap(QtCore.QSize(200,200))
+        illustrationWidth = self.animatorWidth*0.85
+        return self.cubeViewer.getCurrentFramePixmap(QtCore.QSize(illustrationWidth,illustrationWidth*0.9))
     
     def changeCurrentFrame(self):
         """ Change the frame being edited."""
@@ -670,11 +508,21 @@ class Animator(Qtw.QWidget):
     def addFrame(self):
         """ Create and add a new frame to the animation."""
         num = len(self.animationViewer.frameList)
-        self.animationViewer.frameList.append(CubeLEDFrame('#{}'.format(num+1), self.cubeSize, self.animationViewer.timeLine, self.animationViewer))
+        frameWidth = self.animatorWidth*0.9
+        self.animationViewer.frameList.append(CubeLEDFrame('#{}'.format(num+1), self.cubeSize,frameWidth , self.animationViewer.timeLine, self.animationViewer))
         self.animationViewer.changeFrameSelected(self.animationViewer.frameList[num])
         self.animationViewer.frameList[num].setIllustration(self.blankIllustration)
         return self.animationViewer.frameList[num]
-    
+
+
+class DrawerWidget(Qtw.QWidget):
+    def __init__(self, *args, **kwargs):
+        super(DrawerWidget, self).__init__(*args, **kwargs)
+        self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
+        self.setStyleSheet('DrawerWidget{background:white;}')
+        layout = Qtw.QVBoxLayout(self)
+        layout.addWidget(Qtw.QLineEdit(self))
+        layout.addWidget(Qtw.QPushButton('Hello there', self))
 
 
 class MainWindow(Qtw.QWidget):
@@ -689,10 +537,11 @@ class MainWindow(Qtw.QWidget):
         self.animator = Animator(self)
         self.mainLayout.addWidget(self.animator,0,0)
         
-        self.resize(self.screen().size()*0.9) #Do not delete if you want the window to maximized ... damn bug
+        self.mainLayout.addWidget(Qtw.QPushButton('Open menu', self, clicked=self.openMainMenu))
 
-        
-        #SPACERS
-        self.lowSpacer = Qtw.QSpacerItem(20, 40, Qtw.QSizePolicy.Minimum, Qtw.QSizePolicy.Expanding)
-        self.mainLayout.addItem(self.lowSpacer,1,0)
-
+        self.resize(self.screen().size()*0.8) #Do not delete if you want the window to maximized ... damn bug
+    
+    def openMainMenu(self):
+        self.leftDrawer = CDrawer(self, direction=CDrawer.LEFT)
+        self.leftDrawer.setWidget(DrawerWidget(self.leftDrawer))
+        self.leftDrawer.show()
