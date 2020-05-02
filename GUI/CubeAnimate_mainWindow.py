@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets as Qtw
-from PyQt5 import QtCore
-from PyQt5.QtGui import QColor, QFont, QVector3D, QPixmap, QIcon
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtGui import QColor, QFont, QVector3D, QPixmap, QIcon, QKeySequence
 
 from CustomWidgets.CubeViewer3D import CubeViewer3D
 from CustomWidgets.CColorPicker.CColorPicker import CColorPicker
@@ -55,7 +55,15 @@ class CubeLEDFrame_DATA:
     
     def getSizeAxis(self, axis : Axis) -> int:
         return self.cubeSize.getSize(axis)
-
+    
+    def encode(self) -> str:
+        """ Generate data line representing the frame for creating .anim file """
+        strOut = ''
+        for z in range(self.cubeSize.getSize(Axis.Z)):
+            for y in range(self.cubeSize.getSize(Axis.Y)):
+                for x in range(self.cubeSize.getSize(Axis.X)):
+                    strOut = strOut + self.LEDcolors[x][y][z].name()
+        return strOut
 
 
 class LEDbutton(Qtw.QPushButton):
@@ -355,6 +363,10 @@ class CubeLEDFrame(Qtw.QListWidgetItem):
 
     def getFrameData(self) -> CubeLEDFrame_DATA:
         return self.frameData
+    
+    def encodeData(self) -> str:
+        """ Generate data line representing the frame for creating .anim file """
+        return self.frameData.encode()
         
 
 
@@ -475,6 +487,9 @@ class ToolBox(Qtw.QWidget):
         self.colorPicker = CColorPicker(self)
         self.layout.addWidget(self.colorPicker,1,0,1,3)
 
+        self.saveButton = Qtw.QPushButton("Save")
+        self.layout.addWidget(self.saveButton,2,0)
+
         self.labelName = Qtw.QLabel('FPS', self)
         self.labelValue = Qtw.QLabel('0', self)
         self.sliderFPS = ClickJumpSlider(QtCore.Qt.Horizontal, valueChanged=lambda v: self.labelValue.setText(str(v)))
@@ -508,7 +523,7 @@ class Animator(Qtw.QWidget):
 
     def __init__(self,parent=None):
         super(Qtw.QWidget, self).__init__(parent)
-        
+
         ## Attributes & Parameters
         self.parent = parent
         self.cubeSize = CubeSize(8,8,8)
@@ -550,6 +565,11 @@ class Animator(Qtw.QWidget):
         self.eraseColorLED_signal.connect(self.currentSelectedFrame.getFrameData().eraseColorLED)
         self.animationViewer.addFrameButton.clicked.connect(self.addFrame)
         self.animationViewer.timeLine.itemSelectionChanged.connect(self.changeCurrentFrame)
+
+        self.toolBox.saveButton.clicked.connect(self.saveAnimation)
+        self.SaveShortcut = Qtw.QShortcut(QKeySequence("Ctrl+S"), self)
+        self.SaveShortcut.activated.connect(self.saveAnimation)
+
     
     def getCurrentColor(self) -> QColor:
         """ Return the color selected in the widget colorPicker(ColorPicker)."""
@@ -592,6 +612,17 @@ class Animator(Qtw.QWidget):
         self.animationViewer.frameList[num].setIllustration(self.blankIllustration)
         #self.cubeViewer.newFrameAnimation()
         return self.animationViewer.frameList[num]
+    
+    def saveAnimation(self):
+        print("Save animation")
+        nominalName = "Animation"
+        directoryName, fileExtension = Qtw.QFileDialog.getSaveFileName(self, 'Save File',"./{}".format(nominalName),"Animation Files (*.anim)")
+        
+        if len(directoryName)>0:
+            file = open(directoryName,'w')
+            text = self.animationViewer.frameList[0].encodeData()
+            file.write(text)
+            file.close()
 
 
 
@@ -633,6 +664,7 @@ class MainMenu(Qtw.QWidget):
     
     def displayLabel(self):
         self.parent.changeWindow(1)
+
 
 
 class MainWindow(Qtw.QWidget):
