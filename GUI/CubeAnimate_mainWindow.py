@@ -382,9 +382,10 @@ class AnimationList(Qtw.QWidget):
     def __init__(self, cubeSize:CubeSize, size : int, horizontalDisplay : bool = False, parent=None):
         super(Qtw.QWidget, self).__init__(parent)
         self.parent = parent
+        self.cubeSize = cubeSize
         self.listWidth = size
-
         self.timeLine = Qtw.QListWidget()
+        #self.copyCache = CubeLEDFrame("null",self.cubeSize,self.listWidth,None,self)
         if horizontalDisplay:
             self.layout = Qtw.QHBoxLayout()
             self.timeLine.setFlow(Qtw.QListView.LeftToRight)
@@ -405,9 +406,86 @@ class AnimationList(Qtw.QWidget):
         self.layout.addWidget(self.addFrameButton)
 
         self.frameList = [] #Store all frames
-    
+
+        ## Menu
+        self._contextMenu = Qtw.QMenu(self)
+        self._contextMenu.addAction('Delete', self.menuDeleteFrame)
+        self._animation = QtCore.QPropertyAnimation(self._contextMenu, b'geometry', self, easingCurve=QtCore.QEasingCurve.Linear, duration=100)
+        
     def changeFrameSelected(self, frame : CubeLEDFrame):
         self.timeLine.setCurrentItem(frame)
+    
+    def contextMenuEvent(self, event):
+        pos = event.globalPos()
+        size = self._contextMenu.sizeHint()
+        x, y, w, h = pos.x(), pos.y(), size.width(), size.height()
+        self._animation.stop()
+        self._animation.setStartValue(QtCore.QRect(x, y, 0, h))
+        self._animation.setEndValue(QtCore.QRect(x, y, w, h))
+        self._animation.start()
+        self._contextMenu.exec_(event.globalPos())
+    
+    def menuDeleteFrame(self):
+        if len(self.frameList) > 1:
+            index = self.frameList.index(self.timeLine.selectedItems()[0])
+            self.frameList.pop(index)
+            self.timeLine.takeItem(index)
+            self.timeLine.setCurrentItem(self.frameList[min(index,len(self.frameList)-1)])
+            for i in range(index,len(self.frameList)):
+                print(i)
+                self.frameList[i].frame.setTitle("#{}".format(i+1))
+
+
+
+
+class ClickJumpSlider(Qtw.QSlider):
+
+    def mousePressEvent(self, event):
+        # 获取上面的拉动块位置
+        option = Qtw.QStyleOptionSlider()
+        self.initStyleOption(option)
+        rect = self.style().subControlRect(
+            Qtw.QStyle.CC_Slider, option, Qtw.QStyle.SC_SliderHandle, self)
+        if rect.contains(event.pos()):
+            # 如果鼠标点击的位置在滑块上则交给Qt自行处理
+            super(ClickJumpSlider, self).mousePressEvent(event)
+            return
+        if self.orientation() == QtCore.Qt.Horizontal:
+            # 横向，要考虑invertedAppearance是否反向显示的问题
+            self.setValue(self.style().sliderValueFromPosition(
+                self.minimum(), self.maximum(),
+                event.x() if not self.invertedAppearance() else (self.width(
+                ) - event.x()), self.width()))
+        else:
+            # 纵向
+            self.setValue(self.style().sliderValueFromPosition(
+                self.minimum(), self.maximum(),
+                (self.height() - event.y()) if not self.invertedAppearance(
+                ) else event.y(), self.height()))
+
+
+class ToolBox(Qtw.QWidget):
+    def __init__(self,parent=None):
+        super(Qtw.QWidget, self).__init__(parent)
+        self.parent = parent
+
+        self.layout = Qtw.QGridLayout(self)
+        self.setLayout(self.layout)  
+
+        self.colorPicker = CColorPicker(self)
+        self.layout.addWidget(self.colorPicker,1,0,1,3)
+
+        self.labelName = Qtw.QLabel('FPS', self)
+        self.labelValue = Qtw.QLabel('0', self)
+        self.sliderFPS = ClickJumpSlider(QtCore.Qt.Horizontal, valueChanged=lambda v: self.labelValue.setText(str(v)))
+        self.layout.addWidget(self.sliderFPS,0,1)
+        self.layout.addWidget(self.labelValue,0,2)
+        self.layout.addWidget(self.labelName,0,0)
+        
+
+    def getColor(self) -> QColor:
+        """ Return the color selected in the widget colorPicker(ColorPicker)."""
+        return self.colorPicker.getColor()
 
 
 
@@ -440,7 +518,7 @@ class Animator(Qtw.QWidget):
         self.animatorWidth = self.screen().size().width() * self.animationViewerRatio
 
         ## Widget instantiation
-        self.colorPicker = CColorPicker(self)
+        self.toolBox = ToolBox(self)
         self.cubeViewer = CubeViewer3D(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
         self.cubeSliced = CubeFullView(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
         self.animationViewer = AnimationList(self.cubeSize, self.animatorWidth)
@@ -449,7 +527,7 @@ class Animator(Qtw.QWidget):
         self.horizontlSpliter = Qtw.QSplitter(QtCore.Qt.Horizontal)
         self.verticalSpliter = Qtw.QSplitter(QtCore.Qt.Vertical)
 
-        self.horizontlSpliter.addWidget(self.colorPicker)
+        self.horizontlSpliter.addWidget(self.toolBox)
         self.horizontlSpliter.addWidget(self.cubeViewer)
         self.horizontlSpliter.addWidget(self.animationViewer)
         self.horizontlSpliter.setStretchFactor(0,0)
@@ -475,7 +553,7 @@ class Animator(Qtw.QWidget):
     
     def getCurrentColor(self) -> QColor:
         """ Return the color selected in the widget colorPicker(ColorPicker)."""
-        return self.colorPicker.getColor()
+        return self.toolBox.getColor()
     
     def getCurrentCubePixmap(self) -> QPixmap:
         """ Return the vizualisation of the widget cubeViewer(CubeViewer3D)."""
@@ -512,7 +590,27 @@ class Animator(Qtw.QWidget):
         self.animationViewer.frameList.append(CubeLEDFrame('#{}'.format(num+1), self.cubeSize,frameWidth , self.animationViewer.timeLine, self.animationViewer))
         self.animationViewer.changeFrameSelected(self.animationViewer.frameList[num])
         self.animationViewer.frameList[num].setIllustration(self.blankIllustration)
+        #self.cubeViewer.newFrameAnimation()
         return self.animationViewer.frameList[num]
+
+
+
+class StartingMenuBackground(Qtw.QWidget):
+    newColorLED_signal = QtCore.pyqtSignal(int,int,int, QColor)
+    eraseColorLED_signal = QtCore.pyqtSignal(int,int,int)
+
+    def __init__(self, parent):
+        super(Qtw.QWidget, self).__init__(parent)
+        self.parent = parent
+        self.cubeSize = CubeSize(8,8,8)
+
+        self.layout = Qtw.QVBoxLayout(self)
+        self.cubeViewer = CubeViewer3D(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
+        self.layout.addWidget(self.cubeViewer)
+    
+    def getCurrentColor(self) -> QColor :
+        return QColor(255,0,0)
+
 
 
 class MainMenu(Qtw.QWidget):
@@ -544,7 +642,7 @@ class MainWindow(Qtw.QWidget):
 
         ## Windows instantiation
         self.animator = Animator(self)
-        self.widgetExample = Qtw.QLabel("Hello there!")
+        self.startBackground = StartingMenuBackground(self)
 
         ## Main menu
         self.drawerMenu = CDrawer(self, direction=CDrawer.LEFT)
@@ -553,20 +651,20 @@ class MainWindow(Qtw.QWidget):
 
         ## Windows manager
         self.leftlist = Qtw.QListWidget()
-        self.leftlist.insertItem(0, 'Animator' )
-        self.leftlist.insertItem(1, 'Label' )
+        self.leftlist.insertItem(0, 'StarterBackground' )
+        self.leftlist.insertItem(1, 'Animator' )
         self.Stack = Qtw.QStackedWidget(self)
         self.Stack.addWidget(self.animator)
-        self.Stack.addWidget(self.widgetExample)
+        self.Stack.addWidget(self.startBackground)
 
         ## MainWindow layout
         self.mainLayout=Qtw.QGridLayout(self)
         self.setLayout(self.mainLayout)
 
-        self.mainLayout.addWidget(self.Stack,0,1)        
-        self.mainLayout.addWidget(Qtw.QPushButton('Open menu', self, clicked=self.openMainMenu), 0, 0)
+        self.mainLayout.addWidget(self.Stack,0,1)      
+        self.mainLayout.addWidget(Qtw.QPushButton('>', self, clicked=self.openMainMenu), 0, 0)
 
-        self.resize(self.screen().size()*0.8) #Do not delete if you want the window to maximized ... damn bug
+        self.resize(self.screen().size()*0.8) #Do not delete if you want the window to maximized. I know it works, I just don't know WHY it works.
     
     def openMainMenu(self):
         self.drawerMenu.show()

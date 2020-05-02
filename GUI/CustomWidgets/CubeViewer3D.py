@@ -20,7 +20,7 @@ class ScatterDataModifier(QtCore.QObject):
         self.nullColor = QColor(255,255,255)
         self.nullColor.setAlpha(100)
 
-        #Graphics
+        ## Graphics
         self.m_graph = scatter
         self.m_fontSize = 40.0
         
@@ -33,17 +33,28 @@ class ScatterDataModifier(QtCore.QObject):
         self.m_graph.activeTheme().setSingleHighlightColor(self.nullColor)
         self.m_graph.setShadowQuality(QAbstract3DGraph.ShadowQualitySoftLow)
 
+        ## Camera
         self.m_graph.scene().activeCamera().setCameraPreset(Q3DCamera.CameraPresetIsometricRight)
         self.m_graph.scene().activeCamera().setCameraPosition(300,20)
         self.m_graph.scene().activeCamera().setZoomLevel(110)
 
-        self.m_graph.axisX().setTitle("X")
+        ## Axis
+        self.m_graph.axisX().setTitle("Depth") # x-axis
+        self.m_graph.axisX().setTitleVisible(True)
         self.m_graph.axisX().setSegmentCount(x-1)
-        self.m_graph.axisY().setTitle("Y")
-        self.m_graph.axisY().setSegmentCount(y-1)
-        self.m_graph.axisZ().setTitle("Z")
-        self.m_graph.axisZ().setSegmentCount(z-1)
+        self.m_graph.axisX().setLabelFormat("%i")
 
+        self.m_graph.axisY().setTitle("Height")  # z-axis (z-axis and y-axis reversed to match representations)
+        self.m_graph.axisY().setTitleVisible(True)
+        self.m_graph.axisY().setSegmentCount(y-1)
+        self.m_graph.axisY().setLabelFormat("%i")
+
+        self.m_graph.axisZ().setTitle("Width")  # y-axis (z-axis and y-axis reversed to match representations)
+        self.m_graph.axisZ().setTitleVisible(True)
+        self.m_graph.axisZ().setSegmentCount(z-1)
+        self.m_graph.axisZ().setLabelFormat("%i")
+
+        ## Instantiate LED representation
         self.matrixLEDserie = []
         
         count = 0
@@ -53,11 +64,11 @@ class ScatterDataModifier(QtCore.QObject):
                 self.matrixLEDserie[i].append([])
                 for k in range(z):
                     
-                    item = QScatterDataItem(QVector3D(i,k,j)) # z-axis and y-axis to match representations, purely graphic
+                    item = QScatterDataItem(QVector3D(i+1,k+1,j+1)) # z-axis and y-axis reversed to match representations, purely graphic
 
                     self.matrixLEDserie[i][j].append(QScatter3DSeries(QScatterDataProxy()))
 
-                    self.matrixLEDserie[i][j][k].setItemLabelFormat("@xTitle: @xLabel @yTitle: @yLabel @zTitle: @zLabel")
+                    #self.matrixLEDserie[i][j][k].setItemLabelFormat("@xTitle: @xLabel @yTitle: @yLabel @zTitle: @zLabel")
                     self.matrixLEDserie[i][j][k].setMeshSmooth(True)
                     self.matrixLEDserie[i][j][k].setName(str(i) + " " + str(j) + " " + str(k))
                     
@@ -138,3 +149,11 @@ class CubeViewer3D(Qtw.QWidget):
         self.graph.scene().activeCamera().setZoomLevel(zoom)
 
         return QPixmap.fromImage(image)
+    
+    def newFrameAnimation(self):
+        self.anim = QtCore.QPropertyAnimation(self.graph.scene().activeCamera(), b"xRotation")
+        self.anim.setDuration(2500)
+        self.anim.setStartValue(float(0))
+        self.anim.setEndValue(float(100))
+        self.anim.setEasingCurve(QtCore.QEasingCurve.OutExpo)
+        self.anim.start()
