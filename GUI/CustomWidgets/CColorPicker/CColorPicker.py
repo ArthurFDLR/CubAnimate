@@ -166,18 +166,20 @@ class CColorPicker(QWidget):
         self.movableON = movableWindow
 
         self.setObjectName('Custom_Color_Dialog')
-        self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
+        #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setStyleSheet(Stylesheet)
         self.mPos = None
         self.initUi()
         self.initSignals()
         # 添加阴影
+        
         effect = QGraphicsDropShadowEffect(self)
         effect.setBlurRadius(10)
         effect.setOffset(0, 0)
         effect.setColor(Qt.gray)
         self.setGraphicsEffect(effect)
+        
 
     def initUi(self):
         layout = QVBoxLayout(self)

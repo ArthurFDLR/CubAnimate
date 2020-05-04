@@ -71,10 +71,14 @@ class CColorItems(QListView):
                 self.addColor(color)
         
         self._contextMenu = QMenu(self)
+        
         self._contextMenu.addAction('Delete palette', self.menuDeletePalette)
         self._contextMenu.addAction('Delete color', self.menuDeleteColor)
+        self._contextMenu.addAction('Rename palette', self.menuRenameColor)
+        
         self._animation = QPropertyAnimation(self._contextMenu, b'geometry', self, easingCurve=QEasingCurve.Linear, duration=100)
         self._contextMenu.actions()[1].setDisabled(True)
+
 
     def menuDeletePalette(self):
         print('Delete palette')
@@ -85,6 +89,9 @@ class CColorItems(QListView):
         print('Color index:' + str(self.selectedIndexes()[0].row()))
         self.colorList.pop(index)
         self._model.takeRow(index)
+    
+    def menuRenameColor(self):
+        self.parent.startTabRename(self.parent.indexOf(self))
     
     def contextMenuEvent(self, event):
         pos = event.globalPos()
@@ -98,13 +105,13 @@ class CColorItems(QListView):
         self._contextMenu.actions()[1].setDisabled(True)
     
     def addColor(self, color):
-        self.colorList.append(color)
-
-        item = QStandardItem('')
-        item.setData(color)
-        item.setSizeHint(QSize(20, 20))
-        item.setToolTip(color.name().upper())
-        self._model.appendRow(item)
+        if color not in self.colorList:
+            self.colorList.append(color)
+            item = QStandardItem('')
+            item.setData(color)
+            item.setSizeHint(QSize(20, 20))
+            item.setToolTip(color.name().upper())
+            self._model.appendRow(item)
 
     def addColorHEX(self, color):
         self.colorList.append(QColor(color))

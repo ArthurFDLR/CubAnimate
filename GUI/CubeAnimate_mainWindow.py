@@ -117,7 +117,7 @@ class LEDbutton(Qtw.QPushButton):
 
         self.setMinimumSize(20,20)
         self.aspectRatio = 1.0
-        self.styleStr = "background-color: {}; border: 0px"
+        self.styleStr = "background-color: {}"
         #policy = Qtw.QSizePolicy(Qtw.QSizePolicy.Preferred, Qtw.QSizePolicy.Preferred)
         #policy.setHeightForWidth(True)
         #self.setSizePolicy(policy)
@@ -187,11 +187,6 @@ class CubeLayerView(Qtw.QWidget):
         self.nbrRow = cubeSize.getSize(rowAxis)
 
         self.aspectRatio = self.nbrRow/self.nbrColumn
-
-        self.styleStr = "background-color: {}; border: 0px"
-        #policy = Qtw.QSizePolicy(Qtw.QSizePolicy.Preferred, Qtw.QSizePolicy.Preferred)
-        #policy.setHeightForWidth(True)
-        #self.setSizePolicy(policy)
 
         self.layout=Qtw.QGridLayout(self)
         self.setLayout(self.layout)
@@ -281,11 +276,46 @@ class Cube3DView(Qtw.QScrollArea):
 
 
 
-class CubeFullView(Qtw.QTabWidget):
+
+class CubeFullView(Qtw.QWidget):
     """ 3 tabs containing a representation of the cube sliced along each axis.
     
     Attributes:
         cubeSize (CubeSize)): Number of LEDs along each axis.
+    """
+
+    stylesheet = """
+    QLineEdit, QLabel, QTabWidget {
+        font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen,Ubuntu,Cantarell,Fira Sans,Droid Sans,Helvetica Neue,sans-serif;
+    }
+    QTabWidget::pane {
+        border: none;
+    }
+    QTabBar::tab {
+        padding: 3px 6px;
+        color: rgb(100, 100, 100);
+        background: white;
+        border-radius: 2px;
+    }
+    QTabBar::tab:hover {
+        color: black;
+    }
+    QTabBar::tab:selected {
+        color: rgb(139, 173, 228);
+        border-bottom: 2px solid rgb(139, 173, 228);
+    }
+    QTabBar::tab:!selected {
+        border-bottom: 2px solid transparent;
+    }
+    QScrollBar:horizontale {
+        max-width: 10px;
+        border: none;
+        margin: 0px 0px 0px 0px;
+    }
+    QPushButton {
+        border: 1px solid rgb(200,200,200);
+        border-radius: 10px;
+    }
     """
 
     def __init__(self, cubeSize:CubeSize, newColor_signal:QtCore.pyqtSignal, eraseColor_signal:QtCore.pyqtSignal, parent):
@@ -296,14 +326,42 @@ class CubeFullView(Qtw.QTabWidget):
             eraseColor_signal (QtCore.pyqtSignal(int,int,int)): Signal sended when the led at the given position is erased.
             parent (QWidget): Need a method getCurrentColor()->QColor.
         """
-        super(Qtw.QTabWidget, self).__init__(parent)
+        super(Qtw.QWidget, self).__init__(parent)
         self.parent = parent
+
+        self.setObjectName('Custom_CubeSliced_Window')
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+        self.setStyleSheet(self.stylesheet)
+        
+        effect = Qtw.QGraphicsDropShadowEffect(self)
+        effect.setBlurRadius(10)
+        effect.setOffset(0, 0)
+        effect.setColor(QtCore.Qt.gray)
+        self.setGraphicsEffect(effect)
+
+        layout = Qtw.QVBoxLayout(self)
+        self.colorView = Qtw.QWidget(self)
+        self.colorView.setObjectName('Custom_CubeSliced_View')
+        layout.addWidget(self.colorView)
+
+        layout = Qtw.QVBoxLayout(self.colorView)
+        layout.setContentsMargins(1, 1, 1, 1)
+
+        self.tabWidget = Qtw.QTabWidget()
+        layout.addWidget(self.tabWidget)
 
         self.newColor_signal = newColor_signal
         self.eraseColor_signal = eraseColor_signal
 
         self.cubeSize = cubeSize
         self.createTabs(self.cubeSize)
+        
+        effect = Qtw.QGraphicsDropShadowEffect(self)
+        effect.setBlurRadius(10)
+        effect.setOffset(0, 0)
+        effect.setColor(QtCore.Qt.gray)
+        self.setGraphicsEffect(effect)
+        
 
     def getCurrentColor(self) -> QColor :
         return self.parent.getCurrentColor()
@@ -327,14 +385,14 @@ class CubeFullView(Qtw.QTabWidget):
         self.cube_LeftView = Cube3DView(Axis.Z, Axis.X, Axis.Y, self.newColor_signal, self.eraseColor_signal, self)
         self.cube_BackView = Cube3DView(Axis.Z, Axis.Y, Axis.X, self.newColor_signal, self.eraseColor_signal, self)
         
-        self.addTab(self.cube_BackView, "Back to front")
-        self.addTab(self.cube_LeftView, "Left to right")
-        self.addTab(self.cube_BottomView, "Bottom to top")
+        self.tabWidget.addTab(self.cube_BackView, "Back to front")
+        self.tabWidget.addTab(self.cube_LeftView, "Left to right")
+        self.tabWidget.addTab(self.cube_BottomView, "Bottom to top")
     
     def changeSize(self, cubeSize:CubeSize):
         """Change sizes of the cube."""
-        self.erase()
-        self.createTabs(cubeSize)
+        self.tabWidget.erase()
+        self.tabWidget.createTabs(cubeSize)
 
 
 

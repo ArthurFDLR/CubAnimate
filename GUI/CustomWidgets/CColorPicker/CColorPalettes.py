@@ -11,7 +11,7 @@ Created on 2019年4月21日
 """
 from PyQt5.QtCore import QSettings, pyqtSignal
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QTabWidget, QToolButton, QLabel, QTabBar
+from PyQt5.QtWidgets import QTabWidget, QToolButton, QLabel, QTabBar, QLineEdit
 
 from CustomWidgets.CColorPicker.CColorItems import CColorItems
 
@@ -79,6 +79,8 @@ class CColorPalettes(QTabWidget):
     def __init__(self, *args, **kwargs):
         super(CColorPalettes, self).__init__(*args, **kwargs)
 
+        self.tabBar().tabBarDoubleClicked.connect(self.startTabRename)
+
         self._setting = QSettings('CColorPicker', QSettings.NativeFormat, self)
         self.palettesList = []
 
@@ -115,7 +117,24 @@ class CColorPalettes(QTabWidget):
     def deleteTab(self):
         self.palettesList.pop(self.currentIndex()-1)
         self.currentWidget().deleteLater()
+    
+    def startTabRename(self, tab_index):
+        self.__edited_tab = tab_index
+        rect = self.tabBar().tabRect(tab_index)
+        top_margin = 3
+        left_margin = 6
+        self.__edit = QLineEdit(self.tabBar())
+        self.__edit.show()
+        self.__edit.move(rect.left() + left_margin, rect.top() + top_margin)
+        self.__edit.resize(rect.width() - 2 * left_margin, rect.height() - 2 * top_margin)
+        self.__edit.setText(self.tabBar().tabText(tab_index))
+        self.__edit.selectAll()
+        self.__edit.setFocus()
+        self.__edit.editingFinished.connect(self.finish_rename)
 
+    def finish_rename(self):
+        self.tabBar().setTabText(self.__edited_tab, self.__edit.text())
+        self.__edit.deleteLater()
 
 
 if __name__ == '__main__':
