@@ -64,6 +64,24 @@ class CubeLEDFrame_DATA:
                 for x in range(self.cubeSize.getSize(Axis.X)):
                     strOut = strOut + self.LEDcolors[x][y][z].name()
         return strOut
+    
+    def decode(self, dataLine : str):
+        colorNameSize = 7
+        dataLength = len(dataLine)
+        listColorName = [ dataLine[i:i+colorNameSize] for i in range(0, dataLength, colorNameSize) ]
+
+        numLED = 0
+        if len(listColorName) == self.cubeSize.getTotalNode(): # Check size coherency
+            for z in range(self.cubeSize.getSize(Axis.Z)):
+                for y in range(self.cubeSize.getSize(Axis.Y)):
+                    for x in range(self.cubeSize.getSize(Axis.X)):
+                        self.LEDcolors[x][y][z].setNamedColor(listColorName[numLED])
+                        if not self.LEDcolors[x][y][z].isValid():
+                            print("Color reading error")
+                            self.LEDcolors[x][y][z] = self.nullColor
+                        numLED +=1
+        else:
+            print("Size incoherency")
 
 
 class LEDbutton(Qtw.QPushButton):
@@ -367,6 +385,10 @@ class CubeLEDFrame(Qtw.QListWidgetItem):
     def encodeData(self) -> str:
         """ Generate data line representing the frame for creating .anim file """
         return self.frameData.encode()
+    
+    def decodeData(self, dataLine : str):
+        """ Generate data line representing the frame for creating .anim file """
+        self.frameData.decode(dataLine)
         
 
 
@@ -480,19 +502,22 @@ class ToolBox(Qtw.QWidget):
     def __init__(self,parent=None):
         super(Qtw.QWidget, self).__init__(parent)
         self.parent = parent
+        self.animationFPS = 24
 
         self.layout = Qtw.QGridLayout(self)
         self.setLayout(self.layout)  
 
-        self.colorPicker = CColorPicker(self)
+        self.colorPicker = CColorPicker(False, False, self)
         self.layout.addWidget(self.colorPicker,1,0,1,3)
 
         self.saveButton = Qtw.QPushButton("Save")
         self.layout.addWidget(self.saveButton,2,0)
 
         self.labelName = Qtw.QLabel('FPS', self)
-        self.labelValue = Qtw.QLabel('0', self)
+        self.labelValue = Qtw.QLabel('{}'.format(self.animationFPS), self)
         self.sliderFPS = ClickJumpSlider(QtCore.Qt.Horizontal, valueChanged=lambda v: self.labelValue.setText(str(v)))
+        self.sliderFPS.setValue(self.animationFPS)
+
         self.layout.addWidget(self.sliderFPS,0,1)
         self.layout.addWidget(self.labelValue,0,2)
         self.layout.addWidget(self.labelName,0,0)
@@ -501,7 +526,14 @@ class ToolBox(Qtw.QWidget):
     def getColor(self) -> QColor:
         """ Return the color selected in the widget colorPicker(ColorPicker)."""
         return self.colorPicker.getColor()
-
+    
+    def getFPS(self) -> int:
+        return self.animationFPS
+    
+    def changeFPS(self, value):
+        self.animationFPS = value
+        self.labelValue.setText(str(self.animationFPS))
+        self.sliderFPS.setValue(self.animationFPS)
 
 
 class Animator(Qtw.QWidget):
@@ -531,6 +563,7 @@ class Animator(Qtw.QWidget):
         self.setLayout(self.mainLayout)
         self.animationViewerRatio = 0.15
         self.animatorWidth = self.screen().size().width() * self.animationViewerRatio
+        self.animationName = "Animation"
 
         ## Widget instantiation
         self.toolBox = ToolBox(self)
@@ -614,14 +647,15 @@ class Animator(Qtw.QWidget):
         return self.animationViewer.frameList[num]
     
     def saveAnimation(self):
-        print("Save animation")
-        nominalName = "Animation"
-        directoryName, fileExtension = Qtw.QFileDialog.getSaveFileName(self, 'Save File',"./{}".format(nominalName),"Animation Files (*.anim)")
-        
+        directoryName, fileExtension = Qtw.QFileDialog.getSaveFileName(self, 'Save File',"./{}".format(self.animationName),"Animation Files (*.anim)")
+
         if len(directoryName)>0:
             file = open(directoryName,'w')
-            text = self.animationViewer.frameList[0].encodeData()
-            file.write(text)
+            headerLine = "{}-{},{},{}-{}\n".format(self.animationName, self.cubeSize.getSize(Axis.X), self.cubeSize.getSize(Axis.Y), self.cubeSize.getSize(Axis.Z), str(self.toolBox.getFPS()))
+            file.write(headerLine)
+            for frame in self.animationViewer.frameList:
+                frameSTR = frame.encodeData() + '\n'
+                file.write(frameSTR)
             file.close()
 
 

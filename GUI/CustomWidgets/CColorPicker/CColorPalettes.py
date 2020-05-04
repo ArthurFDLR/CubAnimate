@@ -11,13 +11,14 @@ Created on 2019年4月21日
 """
 from PyQt5.QtCore import QSettings, pyqtSignal
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QTabWidget
+from PyQt5.QtWidgets import QTabWidget, QToolButton, QLabel, QTabBar
 
 from CustomWidgets.CColorPicker.CColorItems import CColorItems
 
 
 __Author__ = 'Irony'
 __Copyright__ = 'Copyright (c) 2019'
+
 
 MaterialColors = [
     '#F44336', '#E91E63', '#9C27B0', '#673AB7',
@@ -79,36 +80,42 @@ class CColorPalettes(QTabWidget):
         super(CColorPalettes, self).__init__(*args, **kwargs)
 
         self._setting = QSettings('CColorPicker', QSettings.NativeFormat, self)
-        self.addTab(CColorItems(MaterialColors, self,
-                                clicked=self.onColorChanged), 'Material')
-        self.addTab(CColorItems(FlatColors, self,
-                                clicked=self.onColorChanged), 'Flat')
-        self.addTab(CColorItems(FluentColors, self,
-                                clicked=self.onColorChanged), 'Fluent')
-        self.addTab(CColorItems(SocialColors, self,
-                                clicked=self.onColorChanged), 'Social')
-        self.addTab(CColorItems(MetroColors, self,
-                                clicked=self.onColorChanged), 'Metro')
+        self.palettesList = []
 
-        self.customColors = self._setting.value('colors', [])
-        self.customItems = CColorItems(
-            self.customColors, self, clicked=self.onColorChanged)
-        self.addTab(self.customItems, 'Custom')
+        self.newPalletteButton = QToolButton(self)
+        self.newPalletteButton.setText("+")
+        self.addTab(QLabel("Create new color pallette by pressing '+'"),"")
+        self.setTabEnabled(0,False)
+        self.tabBar().setTabButton(0,QTabBar.LeftSide,self.newPalletteButton)
+        self.newPalletteButton.clicked.connect(self.addColorPalette)
+    
+    def addColorPalette(self):
+        namePalette = "Palette {}".format(len(self.palettesList)+1)
+        self.palettesList.append(CColorItems(namePalette, False, [], self, clicked=self.onColorChanged, pressed=self.onColorSelection))
+        self.addTab(self.palettesList[-1], namePalette)
+        self.setCurrentWidget(self.palettesList[-1])
 
     def reset(self):
         self.setCurrentIndex(0)
 
     def onColorChanged(self, index):
-        self.colorChanged.emit(
-            self.sender().model().itemFromIndex(index).data())
+        self.colorChanged.emit(self.sender().model().itemFromIndex(index).data())
+    
+    def onColorSelection(self, index):
+        print(index)
+        self.currentWidget()._contextMenu.actions()[1].setDisabled(False)
 
     def addColor(self, color):
-        name = color.name().upper()
-        if not name in self.customColors:
-            self.customColors.append(name)
-            self.customItems.addColor(name)
-            self.setCurrentWidget(self.customItems)
-            self._setting.setValue('colors', self.customColors)
+        if len(self.palettesList)>0:
+            self.currentWidget().addColor(color)
+        else:
+            self.addColorPalette()
+            self.currentWidget().addColor(color)
+        
+    def deleteTab(self):
+        self.palettesList.pop(self.currentIndex()-1)
+        self.currentWidget().deleteLater()
+
 
 
 if __name__ == '__main__':

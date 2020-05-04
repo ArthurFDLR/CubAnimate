@@ -84,6 +84,16 @@ QPushButton {
     font-size: 14px;
     background: white;
 }
+QToolButton {
+    border: 1px solid #cbcbcb;
+    border-radius: 2px;
+    min-width: 21px;
+    max-width: 21px;
+    min-height: 21px;
+    max-height: 21px;
+    font-size: 14px;
+    background: white;
+}
 QPushButton:hover {
     border-color: rgb(139, 173, 228);
 }
@@ -149,8 +159,12 @@ class CColorPicker(QWidget):
 
     selectedColor = QColor(255,0,0)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, alphaSelection : bool, movableWindow : bool, *args, **kwargs):
         super(CColorPicker, self).__init__(*args, **kwargs)
+
+        self.alphaON = alphaSelection
+        self.movableON = movableWindow
+
         self.setObjectName('Custom_Color_Dialog')
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -198,11 +212,12 @@ class CColorPicker(QWidget):
         self.rainbowSlider = CColorSlider(
             CColorSlider.TypeRainbow, self.colorView)
         slayout.addWidget(self.rainbowSlider)
-        self.alphaSlider = CColorSlider(CColorSlider.TypeAlpha, self.colorView)
-        slayout.addWidget(self.alphaSlider)
+        if self.alphaON:
+            self.alphaSlider = CColorSlider(CColorSlider.TypeAlpha, self.colorView)
+            slayout.addWidget(self.alphaSlider)
 
         # 信息
-        self.colorInfos = CColorInfos(self.colorView)
+        self.colorInfos = CColorInfos(self.alphaON, CColorPicker.selectedColor,self.colorView)
         layout.addWidget(self.colorInfos)
 
         # 分割线
@@ -232,14 +247,15 @@ class CColorPicker(QWidget):
         self.colorInfos.colorChanged.connect(self.colorControl.updateColor)
 
         # 透明slider->alpha文字->小圆
-        self.alphaSlider.colorChanged.connect(self.colorInfos.updateAlpha)
+        if self.alphaON:
+            self.alphaSlider.colorChanged.connect(self.colorInfos.updateAlpha)
 
         # alpha文字->透明slider
 #         self.colorInfos.colorChanged.connect(self.alphaSlider.updateAlpha)
 
         # 底部多颜色卡
         self.colorPalettes.colorChanged.connect(self.colorInfos.updateColor)
-        self.colorPalettes.colorChanged.connect(self.colorPanel.createImage)
+        #self.colorPalettes.colorChanged.connect(self.colorPanel.createImage)
         self.colorInfos.colorAdded.connect(self.colorPalettes.addColor)
 
         # 取色器
@@ -249,25 +265,28 @@ class CColorPicker(QWidget):
         self.colorInfos.colorChanged.connect(self.setColor)
 
     def setColor(self, color, alpha):
-        color = QColor(color)
+        color = color
         color.setAlpha(alpha)
         CColorPicker.selectedColor = color
 
     def mousePressEvent(self, event):
         """鼠标点击事件"""
-        if event.button() == Qt.LeftButton:
-            self.mPos = event.pos()
+        if self.movableON:
+            if event.button() == Qt.LeftButton:
+                self.mPos = event.pos()
         event.accept()
 
     def mouseReleaseEvent(self, event):
         '''鼠标弹起事件'''
-        self.mPos = None
+        if self.movableON:
+            self.mPos = None
         event.accept()
 
     def mouseMoveEvent(self, event):
-        if event.buttons() == Qt.LeftButton and self.mPos:
-            if not self.colorPanel.geometry().contains(self.mPos):
-                self.move(self.mapToGlobal(event.pos() - self.mPos))
+        if self.movableON:
+            if event.buttons() == Qt.LeftButton and self.mPos:
+                if not self.colorPanel.geometry().contains(self.mPos):
+                    self.move(self.mapToGlobal(event.pos() - self.mPos))
         event.accept()
 
     def getColor(self) -> QColor:

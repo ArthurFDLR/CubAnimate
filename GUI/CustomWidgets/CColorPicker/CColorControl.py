@@ -30,7 +30,7 @@ class CColorControl(QWidget):
         self.colorChanged.emit(self._color)
 
     def updateColor(self, color, alpha=255):
-        self._color = QColor(color)
+        self._color = color
         self.colorChanged.emit(self._color)
         self._color.setAlpha(alpha)
         self.update()

@@ -9,9 +9,9 @@ Created on 2019年4月21日
 @file: CustomWidgets.CColorPicker.CColorItems
 @description: 小方块列表
 """
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, QRect
 from PyQt5.QtGui import QColor, QStandardItemModel, QStandardItem
-from PyQt5.QtWidgets import QListView, QStyledItemDelegate, QStyle
+from PyQt5.QtWidgets import QListView, QStyledItemDelegate, QStyle, QMenu, QAction
 
 
 __Author__ = "Irony"
@@ -45,8 +45,9 @@ class StyledItemDelegate(QStyledItemDelegate):
 
 class CColorItems(QListView):
 
-    def __init__(self, colors, *args, **kwargs):
-        super(CColorItems, self).__init__(*args, **kwargs)
+    def __init__(self, name : str, fromHEXlist : bool, colors, parent, *args, **kwargs):
+        super(CColorItems, self).__init__(parent, *args, **kwargs)
+        self.parent = parent
         self.setItemDelegate(StyledItemDelegate(self))
         self.setEditTriggers(self.NoEditTriggers)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -59,15 +60,66 @@ class CColorItems(QListView):
         self._model = QStandardItemModel(self)
         self.setModel(self._model)
 
-        for color in colors:
-            self.addColor(color)
+        self.colorList = []
+        self.paletteName = name
+
+        if fromHEXlist:
+            for color in colors:
+                self.addColorHEX(color)
+        else:
+            for color in colors:
+                self.addColor(color)
+        
+        self._contextMenu = QMenu(self)
+        self._contextMenu.addAction('Delete palette', self.menuDeletePalette)
+        self._contextMenu.addAction('Delete color', self.menuDeleteColor)
+        self._animation = QPropertyAnimation(self._contextMenu, b'geometry', self, easingCurve=QEasingCurve.Linear, duration=100)
+        self._contextMenu.actions()[1].setDisabled(True)
+
+    def menuDeletePalette(self):
+        print('Delete palette')
+        self.parent.deleteTab()
+    
+    def menuDeleteColor(self):
+        index = self.selectedIndexes()[0].row()
+        print('Color index:' + str(self.selectedIndexes()[0].row()))
+        self.colorList.pop(index)
+        self._model.takeRow(index)
+    
+    def contextMenuEvent(self, event):
+        pos = event.globalPos()
+        size = self._contextMenu.sizeHint()
+        x, y, w, h = pos.x(), pos.y(), size.width(), size.height()
+        self._animation.stop()
+        self._animation.setStartValue(QRect(x, y, 0, h))
+        self._animation.setEndValue(QRect(x, y, w, h))
+        self._animation.start()
+        self._contextMenu.exec_(event.globalPos())
+        self._contextMenu.actions()[1].setDisabled(True)
     
     def addColor(self, color):
+        self.colorList.append(color)
+
+        item = QStandardItem('')
+        item.setData(color)
+        item.setSizeHint(QSize(20, 20))
+        item.setToolTip(color.name().upper())
+        self._model.appendRow(item)
+
+    def addColorHEX(self, color):
+        self.colorList.append(QColor(color))
+
         item = QStandardItem('')
         item.setData(QColor(color))
         item.setSizeHint(QSize(20, 20))
         item.setToolTip(color)
         self._model.appendRow(item)
+    
+    def getColorPallette(self):
+        return self.colorList
+    
+    #def mousePressEvent(self, ev):
+
 
 
 if __name__ == '__main__':

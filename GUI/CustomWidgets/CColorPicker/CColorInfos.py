@@ -25,11 +25,14 @@ class CColorInfos(QWidget):
     colorChanged = pyqtSignal(QColor, int)
     colorAdded = pyqtSignal(QColor)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, alphaSelection : bool, initColor : QColor, *args, **kwargs):
         super(CColorInfos, self).__init__(*args, **kwargs)
         layout = QGridLayout(self)
         layout.setContentsMargins(11, 2, 11, 2)
         layout.setSpacing(8)
+
+        self.alphaON = alphaSelection
+        self.currentColor = initColor
 
         self.editHex = QLineEdit(
             '#FF0000', self, alignment=Qt.AlignCenter,
@@ -68,13 +71,14 @@ class CColorInfos(QWidget):
         layout.addWidget(self.editBlue, 0, 4)
         layout.addWidget(self.labelBlue, 1, 4)
 
-        self.editAlpha = QSpinBox(
-            self, buttonSymbols=QSpinBox.NoButtons,
-            alignment=Qt.AlignCenter, valueChanged=self.onRgbaChanged)
-        self.editAlpha.setRange(0, 255)
-        self.labelAlpha = QLabel('A', self, alignment=Qt.AlignCenter)
-        layout.addWidget(self.editAlpha, 0, 5)
-        layout.addWidget(self.labelAlpha, 1, 5)
+        if self.alphaON:
+            self.editAlpha = QSpinBox(
+                self, buttonSymbols=QSpinBox.NoButtons,
+                alignment=Qt.AlignCenter, valueChanged=self.onRgbaChanged)
+            self.editAlpha.setRange(0, 255)
+            self.labelAlpha = QLabel('A', self, alignment=Qt.AlignCenter)
+            layout.addWidget(self.editAlpha, 0, 5)
+            layout.addWidget(self.labelAlpha, 1, 5)
 
         layout.addItem(QSpacerItem(
             40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum), 0, 6)
@@ -93,55 +97,67 @@ class CColorInfos(QWidget):
         layout.setColumnStretch(7, 1)
         self.setFocus()
         self.editRed.setValue(255)
-        self.editAlpha.setValue(255)
+        if self.alphaON:
+            self.editAlpha.setValue(255)
 
     def reset(self):
         pass
 
     def onColorAdd(self):
+        '''
         self.colorAdded.emit(QColor(
             self.editRed.value(),
             self.editGreen.value(),
             self.editBlue.value()
         ))
+        '''
+        self.colorAdded.emit(self.currentColor)
 
     def setHex(self, code):
         self.editHex.setText(str(code))
 
     def updateColor(self, color):
-        self.editRed.setValue(color.red())
-        self.editGreen.setValue(color.green())
-        self.editBlue.setValue(color.blue())
+        self.currentColor = color
+        self.editRed.setValue(self.currentColor.red())
+        self.editGreen.setValue(self.currentColor.green())
+        self.editBlue.setValue(self.currentColor.blue())
 
     def updateAlpha(self, _, alpha):
-        self.editAlpha.setValue(alpha)
+        if self.alphaON:
+            self.editAlpha.setValue(alpha)
 
     def onHexChanged(self, code):
         if len(code) != 7:
             return
         color = QColor(code)
+        self.currentColor = color
         if color.isValid():
             self.blockRgbaSignals(True)
             self.editHex.blockSignals(True)
             self.editRed.setValue(color.red())
             self.editGreen.setValue(color.green())
             self.editBlue.setValue(color.blue())
-            self.editAlpha.setValue(color.alpha())
+            if self.alphaON:
+                self.editAlpha.setValue(color.alpha())
             self.colorChanged.emit(color, color.alpha())
             self.editHex.blockSignals(False)
             self.blockRgbaSignals(False)
 
+
     def onRgbaChanged(self, _):
         self.editHex.blockSignals(True)
         self.blockRgbaSignals(True)
-        color = QColor(
-            self.editRed.value(),
-            self.editGreen.value(),
-            self.editBlue.value(),
-            self.editAlpha.value()
-        )
+        if self.alphaON:
+            color = self.currentColor
+            color.setAlpha(self.editAlpha.value())
+        else:
+            color = self.currentColor
+        
         self.editHex.setText(color.name())
-        self.colorChanged.emit(color, self.editAlpha.value())
+        if self.alphaON:
+            self.colorChanged.emit(color, self.editAlpha.value())
+        else:
+            self.colorChanged.emit(color, 255)
         self.blockRgbaSignals(False)
         self.editHex.blockSignals(False)
 
@@ -149,7 +165,8 @@ class CColorInfos(QWidget):
         self.editRed.blockSignals(block)
         self.editGreen.blockSignals(block)
         self.editBlue.blockSignals(block)
-        self.editAlpha.blockSignals(block)
+        if self.alphaON:
+            self.editAlpha.blockSignals(block)
 
     def sizeHint(self):
         return QSize(280, 48)

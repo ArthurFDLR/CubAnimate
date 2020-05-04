@@ -20,3 +20,6 @@ class CubeSize:
     
     def pointDefined(self, x:int, y:int, z:int) -> bool:
         return x < self.size[Axis.X] and y < self.size[Axis.Y] and z < self.size[Axis.Z]
+    
+    def getTotalNode(self) -> int:
+        return self.size[Axis.X] * self.size[Axis.Y] *self.size[Axis.Z]

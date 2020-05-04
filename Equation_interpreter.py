@@ -90,6 +90,7 @@ class MainWindow(Qtw.QWidget):
         self.cubesize:list = [8, 8, 8]
         self.graph = Q3DSurface()
         self.screenSize = self.graph.screen().size()
+        self.graph.setAspectRatio(1.0)
         self.graph.setAxisX(QValue3DAxis())
         self.graph.setAxisY(QValue3DAxis())
         self.graph.setAxisZ(QValue3DAxis())
