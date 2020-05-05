@@ -9,11 +9,11 @@ Created on 2019年4月21日
 @file: CustomWidgets.CColorPicker.CColorPalettes
 @description: 
 """
-from PyQt5.QtCore import QSettings, pyqtSignal
+from PyQt5.QtCore import QSettings, pyqtSignal, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QTabWidget, QToolButton, QLabel, QTabBar, QLineEdit
 
-from CustomWidgets.CColorPicker.CColorItems import CColorItems
+from CustomWidgets.CToolBox.CColorItems import CColorItems
 
 
 __Author__ = 'Irony'
@@ -86,6 +86,8 @@ class CColorPalettes(QTabWidget):
 
         self.newPalletteButton = QToolButton(self)
         self.newPalletteButton.setText("+")
+        self.newPalletteButton.setToolTip('Create new palette')
+        self.newPalletteButton.setCursor(Qt.PointingHandCursor)
         self.addTab(QLabel("Create new color pallette by pressing '+'"),"")
         self.setTabEnabled(0,False)
         self.tabBar().setTabButton(0,QTabBar.LeftSide,self.newPalletteButton)
