@@ -79,7 +79,7 @@ class MainWindow(Qtw.QWidget):
         self.mainLayout.addWidget(self.viewer,2,0)
 
         # Create label #
-        self.mainlabel = Qtw.QLabel("Type your equation here:")
+        self.mainlabel = Qtw.QLabel("Type your equation here, must be a function of (x,z):")
         self.mainLayout.addWidget(self.mainlabel,0,0)
 
         # Create textbox #
@@ -95,8 +95,8 @@ class MainWindow(Qtw.QWidget):
         self.graph.setAxisY(QValue3DAxis())
         self.graph.setAxisZ(QValue3DAxis())
         self.graph.axisX().setTitle("X - Depth")
-        self.graph.axisY().setTitle("Y - Width")
-        self.graph.axisZ().setTitle("Z - Height")
+        self.graph.axisY().setTitle("Y - Height")
+        self.graph.axisZ().setTitle("Z - Width")
         self.functionProxy = QSurfaceDataProxy()
         self.functionSeries = QSurface3DSeries(self.functionProxy)
         self.graphvisualizer = Qtw.QWidget.createWindowContainer(self.graph)
@@ -117,31 +117,29 @@ class MainWindow(Qtw.QWidget):
     @pyqtSlot()
     def on_click(self):
         # Displays the function as LaTeX #
-        f = Expression(self.textbox.text(),["x","y","t"])
+        f = Expression(self.textbox.text(),["x","z","t"])
         self.viewer.setPixmap(mathTex_to_QPixmap('$' + str(f) + '$',15))
         # Displays the graph #
         self.plot3D(f,self.cubesize)
         self.graph.addSeries(self.functionSeries)
 
-    def plot3D(self,func,csize:list,nbsamples=[50,50,50]):
+    def plot3D(self,func,csize:list,nbsamples:list=[50,50]):
         ''' E/ func: funtion to be diplayed on screen ; takes 3 parameters (x,y,t) with t optional (static animation)
             E/ csize: list containing 3 integers (sizeX,sizeY,sizeZ) to know the boundaries 
             E/ nbsamples (OPTIONAL) : list containing 3 integers (sampleX,sampleY,sampleZ) to define the resolution of the graph
             S/ No output, gives the command to display the graph '''
         valuesArray = []
-        XArray = linspace(0., csize[0]-1, nbsamples[0])
-        YArray = linspace(0., csize[1]-1, nbsamples[1])
-        graphHeight = csize[2]
+        stepX=csize[0]/(nbsamples[0]-2)
+        stepZ=csize[2]/(nbsamples[1]-2)
         for i in range(nbsamples[1]):
             currentRow=[]
+            z=min(csize[2]-1,i*stepZ)
             for j in range(nbsamples[0]):
-                z=func(XArray[i],YArray[j])
-                currentRow.append(QSurfaceDataItem(QVector3D(XArray[i],YArray[j],z)))
+                x=min(csize[0]-1,j*stepX)
+                y=func(x,z)
+                currentRow.append(QSurfaceDataItem(QVector3D(x,y,z)))
             valuesArray.append(currentRow)
-        self.functionProxy.resetArray(valuesArray)
-        self.graph.addSeries(self.functionSeries)
-
-        
+        self.functionProxy.resetArray(valuesArray)      
 
 
 ## What is actually running ##
