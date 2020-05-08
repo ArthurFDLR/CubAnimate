@@ -84,7 +84,7 @@ class CColorInfos(QWidget):
             40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum), 0, 6)
         layout.addWidget(QPushButton(
             '+', self, cursor=Qt.PointingHandCursor,
-            toolTip='添加自定义颜色',
+            toolTip='Add color to palette',
             clicked=self.onColorAdd), 0, 7)
 
         layout.setColumnStretch(0, 3)

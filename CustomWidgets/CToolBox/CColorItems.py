@@ -76,7 +76,7 @@ class CColorItems(QListView):
         self._contextMenu.addAction('Delete color', self.menuDeleteColor)
         self._contextMenu.addAction('Rename palette', self.menuRenameColor)
         
-        self._animation = QPropertyAnimation(self._contextMenu, b'geometry', self, easingCurve=QEasingCurve.Linear, duration=100)
+        #self._animation = QPropertyAnimation(self._contextMenu, b'geometry', self, easingCurve=QEasingCurve.Linear, duration=200)
         self._contextMenu.actions()[1].setDisabled(True)
 
 
@@ -94,15 +94,19 @@ class CColorItems(QListView):
         self.parent.startTabRename(self.parent.indexOf(self))
     
     def contextMenuEvent(self, event):
+        '''
         pos = event.globalPos()
         size = self._contextMenu.sizeHint()
         x, y, w, h = pos.x(), pos.y(), size.width(), size.height()
+        self._contextMenu.setGeometry(QRect(x, y, 0, h))
         self._animation.stop()
         self._animation.setStartValue(QRect(x, y, 0, h))
         self._animation.setEndValue(QRect(x, y, w, h))
         self._animation.start()
-        self._contextMenu.exec_(event.globalPos())
+        '''
+        self._contextMenu.popup(event.globalPos())
         self._contextMenu.actions()[1].setDisabled(True)
+
     
     def addColor(self, color):
         if color not in self.colorList:
@@ -125,9 +129,6 @@ class CColorItems(QListView):
     def getColorPallette(self):
         return self.colorList
     
-    #def mousePressEvent(self, ev):
-
-
 
 if __name__ == '__main__':
     import sys

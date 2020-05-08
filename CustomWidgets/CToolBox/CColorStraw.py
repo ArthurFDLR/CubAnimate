@@ -12,7 +12,7 @@ Created on 2019年4月24日
 from PyQt5.QtCore import QByteArray, Qt, QRectF, QLineF, pyqtSignal
 from PyQt5.QtGui import QFontDatabase, QFont, QPainter,\
     QPainterPath, QColor, QPen
-from PyQt5.QtWidgets import QPushButton, QApplication, QWidget
+from PyQt5.QtWidgets import QPushButton, QApplication, QWidget,QToolButton
 
 
 __Author__ = 'Irony'
@@ -64,7 +64,7 @@ class ScaleWindow(QWidget):
             painter.drawRoundedRect(self.rect(), radius, radius)
 
 
-class CColorStraw(QPushButton):
+class CColorStraw(QToolButton):
 
     colorChanged = pyqtSignal(QColor)
 
@@ -75,7 +75,7 @@ class CColorStraw(QPushButton):
         font.setFamily('iconfont')
         self.setFont(font)
         self.setText('')
-        self.setToolTip('吸取屏幕颜色')
+        self.setToolTip('Pick color on screen')
         self._scaleWindow = ScaleWindow()
         # 一定要先显示再隐藏,否则QDialog情况下第一次会卡死
         self._scaleWindow.show()

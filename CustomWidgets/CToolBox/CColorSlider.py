@@ -45,7 +45,7 @@ class CColorSlider(QSlider):
         self._imageAlpha = None                         # 带颜色透明背景和方格合成图
         self._imageCircle = None                        # 圆形滑块图
         self._imageCircleHover = None                   # 圆形滑块悬停图
-        self.setToolTip('彩虹色' if self._types == self.TypeRainbow else '透明度')
+        self.setToolTip('Hue selection' if self._types == self.TypeRainbow else 'Alpha selection')
 
     def reset(self):
         self.setValue(0 if self._types == self.TypeRainbow else self.maximum())
