@@ -1,7 +1,8 @@
-from PyQt5.QtCore import Qt, QSize, QTimer, pyqtSignal, QMimeData
-from PyQt5.QtGui import QPalette, QPixmap
+from PyQt5.QtCore import Qt, QSize, QTimer, pyqtSignal, QMimeData, QRect
+from PyQt5.QtGui import QPalette, QPixmap, QIcon
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QWidget,\
-    QGraphicsDropShadowEffect, QPushButton, QGridLayout, QSpacerItem, QSizePolicy
+    QGraphicsDropShadowEffect, QPushButton, QGridLayout, QSpacerItem, QSizePolicy, QLabel
+from PyQt5.QtSvg import QSvgWidget
 
 
 
@@ -20,9 +21,6 @@ class DropArea(QPushButton):
     }
     QLineEdit:focus, QSpinBox:focus {
         border-color: rgb(139, 173, 228);
-    }
-    QLabel {
-        color: #a9a9a9;
     }
     QPushButton {
         border: 1px solid #cbcbcb;
@@ -43,14 +41,22 @@ class DropArea(QPushButton):
     def __init__(self, parent = None):
         super(DropArea, self).__init__(parent, clicked= lambda : print('Clicked'))
 
-        self.setMinimumSize(200, 200)
+        self.setMinimumSize(self.screen().size() / 4)
         self.setAcceptDrops(True)
         self.setAutoFillBackground(True)
         self.clear()
         self.setStyleSheet(self.Stylesheet)
 
+        layout = QGridLayout(self)
+        self.setLayout(layout)
+        
+        self.svgWidget = QSvgWidget('drop.svg')
+        self.svgWidget.setFixedSize(200,200)
+        layout.addWidget(self.svgWidget)
+        
+
     def dragEnterEvent(self, event):
-        self.setText("<drop content>")
+        print("<drop content>")
         self.setBackgroundRole(QPalette.Highlight)
 
         if self.isAnimation(event.mimeData()):
@@ -63,7 +69,7 @@ class DropArea(QPushButton):
     def dropEvent(self, event):
         mimeData = event.mimeData()
         if self.isAnimation(mimeData):
-            self.setText(mimeData.text())
+            print(mimeData.text())
         else:
             print('Wtf')
         self.setBackgroundRole(QPalette.Dark)
@@ -74,7 +80,7 @@ class DropArea(QPushButton):
         event.accept()
 
     def clear(self):
-        self.setText("<drop content>")
+        print("<drop content>")
         self.setBackgroundRole(QPalette.Dark)
         self.changed.emit(None)
     
@@ -83,6 +89,10 @@ class DropArea(QPushButton):
             return file.text()[-5:] == '.anim'
         return False
 
+    def resizeEvent(self, event):
+        h = self.size().height()
+        w = self.size().width()
+        self.svgWidget.setFixedSize(min(h,w)*0.8,min(h,w)*0.8)
 
 
 
@@ -104,6 +114,10 @@ class NewAnimationDialog(QDialog):
     #closeButton:hover {
         color: white;
         background: red;
+    }
+    QLabel {
+        color: #a9a9a9;
+        font-size: 20px;
     }
     """
 
@@ -133,13 +147,16 @@ class NewAnimationDialog(QDialog):
         layout = QGridLayout(self.widget)
         layout.addItem(QSpacerItem(
             40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum), 0, 0)
+        layout.addWidget(QLabel('Load animation', self), 0, 1)
+        layout.addItem(QSpacerItem(
+            40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum), 0, 2)
         layout.addWidget(QPushButton(
-            'r', self, clicked=self.accept, objectName='closeButton'), 0, 1)
+            'r', self, clicked=self.accept, objectName='closeButton'), 0, 3)
         layout.addItem(QSpacerItem(20, 40, QSizePolicy.Minimum,
                                    QSizePolicy.Expanding), 2, 0)
         
         self.dropZone = DropArea()
-        layout.addWidget(self.dropZone, 1, 0, 1, 2)
+        layout.addWidget(self.dropZone, 1, 0, 1, 4)
     
     def sizeHint(self):
         return self.screen().size() / 3

@@ -235,7 +235,7 @@ class MainWindow(Qtw.QWidget):
         self.startBackground = StartingMenuBackground(self)
 
         ## Main menu
-        self.drawerMenu = CDrawer(self, direction=CDrawer.LEFT)
+        self.drawerMenu = CDrawer(self)
         self.mainMenu = MainMenu(self.newWindow_signal, self)
         self.drawerMenu.setWidget(self.mainMenu)
 

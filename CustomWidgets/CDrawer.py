@@ -21,14 +21,13 @@ class CDrawer(QWidget):
 
     LEFT, TOP, RIGHT, BOTTOM = range(4)
 
-    def __init__(self, *args, stretch=1 / 4, direction=0, widget=None, **kwargs):
+    def __init__(self, *args, stretch=1 / 4, widget=None, **kwargs):
         super(CDrawer, self).__init__(*args, **kwargs)
         
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint | Qt.Drawer | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setStretch(stretch)
-        self.direction = direction
         
         ## Animation
         self.animIn = QPropertyAnimation(self, duration=500, easingCurve=QEasingCurve.OutCubic)
@@ -37,17 +36,16 @@ class CDrawer(QWidget):
         self.animOut = QPropertyAnimation(self, duration=500, finished=self.onAnimOutEnd,easingCurve=QEasingCurve.OutCubic)
         self.animOut.setPropertyName(b'pos')
 
-        self.animFadeIn = QPropertyAnimation(self, duration=400, easingCurve=QEasingCurve.OutCubic)
+        self.animFadeIn = QPropertyAnimation(self, duration=400, easingCurve=QEasingCurve.Linear)
         self.animFadeIn.setPropertyName(b'opacityBG')
 
-        self.animFadeOut = QPropertyAnimation(self, duration=200, easingCurve=QEasingCurve.OutCubic)
+        self.animFadeOut = QPropertyAnimation(self, duration=400, easingCurve=QEasingCurve.Linear)
         self.animFadeOut.setPropertyName(b'opacityBG')
 
         ## Background opacity
-        self.opacityBg = 100
+        self.opacityBg = 0
         self.stylesheetOpacity = '#CDrawer_alphaWidget{background:rgba(55,55,55,%i);}'
         self.alphaWidget = QWidget(self, objectName='CDrawer_alphaWidget')
-        self.alphaWidget.setStyleSheet(self.stylesheetOpacity % (self.opacityBg))
         self.alphaWidget.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         self.setWidget(widget)          # 子控件
 
@@ -77,78 +75,36 @@ class CDrawer(QWidget):
         """进入动画
         :param geometry:
         """
+
+        self.widget.setGeometry(
+            0, 0, int(geometry.width() * self.stretch), geometry.height())
+        self.widget.hide()
+        self.animIn.setStartValue(QPoint(-self.widget.width(), 0))
+        self.animIn.setEndValue(QPoint(0, 0))
+
+        self.opacityBg = 0
         self.animFadeIn.setStartValue(0)
         self.animFadeIn.setEndValue(100)
         self.animFadeIn.start()
+        self.animIn.start()
 
-        if self.direction == self.LEFT:
-            self.widget.setGeometry(
-                0, 0, int(geometry.width() * self.stretch), geometry.height())
-            self.widget.hide()
-            self.animIn.setStartValue(QPoint(-self.widget.width(), 0))
-            self.animIn.setEndValue(QPoint(0, 0))
-            self.animIn.start()
-            self.widget.show()
-        elif self.direction == self.TOP:
-            self.widget.setGeometry(
-                0, 0, geometry.width(), int(geometry.height() * self.stretch))
-            self.widget.hide()
-            self.animIn.setStartValue(QPoint(0, -self.widget.height()))
-            self.animIn.setEndValue(QPoint(0, 0))
-            self.animIn.start()
-            self.widget.show()
-        elif self.direction == self.RIGHT:
-            width = int(geometry.width() * self.stretch)
-            self.widget.setGeometry(
-                geometry.width() - width, 0, width, geometry.height())
-            self.widget.hide()
-            self.animIn.setStartValue(QPoint(self.width(), 0))
-            self.animIn.setEndValue(
-                QPoint(self.width() - self.widget.width(), 0))
-            self.animIn.start()
-            self.widget.show()
-        elif self.direction == self.BOTTOM:
-            height = int(geometry.height() * self.stretch)
-            self.widget.setGeometry(
-                0, geometry.height() - height, geometry.width(), height)
-            self.widget.hide()
-            self.animIn.setStartValue(QPoint(0, self.height()))
-            self.animIn.setEndValue(
-                QPoint(0, self.height() - self.widget.height()))
-            self.animIn.start()
-            self.widget.show()
-
+        self.widget.show()
+        
     def animationOut(self):
         """离开动画
         """
         self.animIn.stop()
         self.animFadeIn.stop()
-
+        self.opacityBg = 100
         self.animFadeOut.setStartValue(100)
         self.animFadeOut.setEndValue(0)
         self.animFadeOut.start()
 
         geometry = self.widget.geometry()
-        if self.direction == self.LEFT:
-            # 左侧抽屉
-            self.animOut.setStartValue(geometry.topLeft())
-            self.animOut.setEndValue(QPoint(-self.widget.width(), 0))
-            self.animOut.start()
-        elif self.direction == self.TOP:
-            # 上方抽屉
-            self.animOut.setStartValue(QPoint(0, geometry.y()))
-            self.animOut.setEndValue(QPoint(0, -self.widget.height()))
-            self.animOut.start()
-        elif self.direction == self.RIGHT:
-            # 右侧抽屉
-            self.animOut.setStartValue(QPoint(geometry.x(), 0))
-            self.animOut.setEndValue(QPoint(self.width(), 0))
-            self.animOut.start()
-        elif self.direction == self.BOTTOM:
-            # 下方抽屉
-            self.animOut.setStartValue(QPoint(0, geometry.y()))
-            self.animOut.setEndValue(QPoint(0, self.height()))
-            self.animOut.start()
+
+        self.animOut.setStartValue(geometry.topLeft())
+        self.animOut.setEndValue(QPoint(-self.widget.width(), 0))
+        self.animOut.start()
 
     def onAnimOutEnd(self):
         """离开动画结束
@@ -186,20 +142,6 @@ class CDrawer(QWidget):
         :param stretch:
         """
         self.stretch = max(0.1, min(stretch, 0.9))
-
-    def getDirection(self):
-        """获取方向
-        """
-        return self.direction
-
-    def setDirection(self, direction):
-        """设置方向
-        :param direction:
-        """
-        direction = int(direction)
-        if direction < 0 or direction > 3:
-            direction = self.LEFT
-        self.direction = direction
     
     def getOpacityBG(self):
         return self.opacityBg
