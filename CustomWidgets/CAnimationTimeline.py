@@ -5,6 +5,63 @@ from PyQt5.QtGui import QPixmap
 
 from CustomWidgets.CTypes import Axis, CubeSize, CubeLEDFrame_DATA
 
+stylesheet = """
+QGroupBox, QLabel, QTabWidget {
+    font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen,Ubuntu,Cantarell,Fira Sans,Droid Sans,Helvetica Neue,sans-serif;
+}
+#Custom_AnimatioList_View {
+    background: white;
+    border-radius: 3px;
+}
+
+QPushButton {
+    border: 1px solid rgb(200,200,200);
+    border-radius: 3px;
+}
+QPushButton:hover {
+    border-color: rgb(139, 173, 228);
+}
+QPushButton:pressed {
+    color: #cbcbcb;
+}
+
+QScrollBar:horizontal {
+    max-height: 10px;
+    border: none;
+    margin: 0px 0px 0px 0px;
+}
+QScrollBar:vertical {
+    max-width: 10px;
+    border: none;
+    margin: 0px 0px 0px 0px;
+}
+QScrollBar::handle {
+    background: rgb(220, 220, 220);
+    border: 1px solid rgb(207, 207, 207);
+    border-radius: 5px;
+}
+
+QListWidget {
+    border : none;
+    border-radius: 3px;
+}
+QFrame {
+    border-radius: 3px;
+}
+QGroupBox {
+    border: 1px solid grey;
+    border-radius: 5px;
+    margin-top: 8px; /* leave space at the top for the title */
+    padding: 0px 0px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin; 
+    subcontrol-position: top center; /* position at the top center */
+    padding: 0px 10px;
+    font-size: 16px;
+}
+"""
+
 class CubeLEDFrame(Qtw.QListWidgetItem):
     """ Item to use in an AnimationList object. Represent a frame in the timeline.
     
@@ -22,7 +79,7 @@ class CubeLEDFrame(Qtw.QListWidgetItem):
         self.name = name
         
         self.frameData = CubeLEDFrame_DATA(cubeSize)
-        self.setSizeHint(QtCore.QSize(width,width*0.9))
+        self.setSizeHint(QtCore.QSize(width*0.95,width*0.85))
  
         self.frame =  Qtw.QGroupBox(self.name)
         self.layout = Qtw.QHBoxLayout()
@@ -60,11 +117,11 @@ class CubeLEDFrame(Qtw.QListWidgetItem):
 
 
 class ratioPushButton(Qtw.QPushButton):
-    def __init__(self, label:str, aspectRatio : float, parent):
-        super(Qtw.QPushButton, self).__init__(label, parent)
+    def __init__(self, label:str, aspectRatio : float, parent, buttonTip : str):
+        super(Qtw.QPushButton, self).__init__(label, parent, cursor=QtCore.Qt.PointingHandCursor, toolTip=buttonTip)
         self.aspectRatio = aspectRatio
         self.parent = parent
-        #self.setSizePolicy(Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Expanding)
+        
 
     def resizeEvent(self, event):
         w = int(self.parent.listWidth * 0.94)
@@ -84,21 +141,36 @@ class AnimationList(Qtw.QWidget):
         self.parent = parent
         self.cubeSize = cubeSize
         self.listWidth = size
+
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+        self.setStyleSheet(stylesheet)
+        effect = Qtw.QGraphicsDropShadowEffect(self)
+        effect.setBlurRadius(10)
+        effect.setOffset(0, 0)
+        effect.setColor(QtCore.Qt.gray)
+        self.setGraphicsEffect(effect)
+        
+        layout = Qtw.QVBoxLayout(self)
+        self.colorView = Qtw.QWidget(self)
+        self.colorView.setObjectName('Custom_AnimatioList_View')
+        layout.addWidget(self.colorView)
+
         self.timeLine = Qtw.QListWidget()
-        #self.copyCache = CubeLEDFrame("null",self.cubeSize,self.listWidth,None,self)
+
         if horizontalDisplay:
-            self.layout = Qtw.QHBoxLayout()
+            self.layout = Qtw.QHBoxLayout(self.colorView)
             self.timeLine.setFlow(Qtw.QListView.LeftToRight)
-            self.addFrameButton = ratioPushButton("Add frame !", 1.0,self)
+            self.addFrameButton = ratioPushButton("Add frame !", 1.0,self, 'Add a blank frame at the end of the animation')
             self.setFixedHeight(self.listWidth)
             self.timeLine.setHorizontalScrollMode(Qtw.QAbstractItemView.ScrollPerPixel)
         else:
-            self.layout = Qtw.QVBoxLayout()
-            self.addFrameButton = ratioPushButton("Add frame !",0.3 ,self)
+            self.layout = Qtw.QVBoxLayout(self.colorView)
+            self.addFrameButton = ratioPushButton("Add frame !",0.3 ,self, 'Add a blank frame at the end of the animation')
             self.setFixedWidth(self.listWidth)
             self.timeLine.setVerticalScrollMode(Qtw.QAbstractItemView.ScrollPerPixel)
-        self.setLayout(self.layout)
-
+        
+        self.layout.setContentsMargins(1, 1, 1, 1)
+        
         self.timeLine.setDragDropMode(Qtw.QAbstractItemView.InternalMove)
         self.layout.addWidget(self.timeLine)
         self.layout.setStretchFactor(self.timeLine,1)

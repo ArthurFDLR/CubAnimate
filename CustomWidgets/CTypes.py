@@ -25,6 +25,9 @@ class CubeSize:
     def getTotalNode(self) -> int:
         return self.size[Axis.X] * self.size[Axis.Y] *self.size[Axis.Z]
 
+    def max(self):
+        return max(self.size.values())
+
 class CubeLEDFrame_DATA:
     def __init__(self, cubeSize:CubeSize):
 

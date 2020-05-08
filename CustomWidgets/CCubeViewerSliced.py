@@ -74,8 +74,15 @@ class LEDbutton(Qtw.QPushButton):
             newColor_signal, eraseColor_signal (pyqtSignal): Signal emited when an LED color is changed or erased.
             parent (QWidget): Need a method getCurrentColor()->QColor.
         """
-        super(Qtw.QPushButton, self).__init__(parent)
+        super(Qtw.QPushButton, self).__init__(parent, cursor=QtCore.Qt.PointingHandCursor, toolTip='({},{},{})'.format(coordinates[Axis.X], coordinates[Axis.Y], coordinates[Axis.Z]))
         self.parent = parent
+
+        self.effect = Qtw.QGraphicsDropShadowEffect(self)
+        self.effect.setBlurRadius(1)
+        self.effect.setOffset(0, 0)
+        self.effect.setColor(QtCore.Qt.gray)
+        self.setGraphicsEffect(self.effect)
+
 
         self.eraseColor_signal = eraseColor_signal
         self.newColor_signal = newColor_signal
@@ -92,9 +99,6 @@ class LEDbutton(Qtw.QPushButton):
         self.setMinimumSize(20,20)
         self.aspectRatio = 1.0
         self.styleStr = "background-color: {}"
-        #policy = Qtw.QSizePolicy(Qtw.QSizePolicy.Preferred, Qtw.QSizePolicy.Preferred)
-        #policy.setHeightForWidth(True)
-        #self.setSizePolicy(policy)
 
         self.setStyleSheet(self.styleStr.format(self.LEDcolor.name()))
 
@@ -122,16 +126,20 @@ class LEDbutton(Qtw.QPushButton):
         elif ev.button() == QtCore.Qt.RightButton:
             #Erase LED
             self.eraseColor_signal.emit(self.x, self.y, self.z)
+            self.effect.setBlurRadius(1)
     
     def changeColor(self, posX :int, posY :int, posZ :int, color : QColor):
         if posX == self.x and posY == self.y and posZ == self.z:
             self.LEDcolor = color
             self.setStyleSheet(self.styleStr.format(self.LEDcolor.name()))
+            self.effect.setBlurRadius(20)
+            self.effect.setColor(self.LEDcolor)
     
     def eraseColor(self, posX :int, posY :int, posZ :int):
         if posX == self.x and posY == self.y and posZ == self.z:
             self.LEDcolor = self.nullColor
             self.setStyleSheet(self.styleStr.format(self.LEDcolor.name()))
+            self.effect.setBlurRadius(1)
 
 
 
@@ -193,9 +201,6 @@ class CubeLayerView(Qtw.QWidget):
         return self._parent.getCurrentColor()
 
     def resizeEvent(self, event):
-        #self.aspectRatio = nbrRow
-        self.spacerRatioInvert = 60
-
         h = event.size().height()
         w = event.size().width()
         if w > self.aspectRatio*h:
@@ -203,8 +208,6 @@ class CubeLayerView(Qtw.QWidget):
         else:
             h = int(w/self.aspectRatio)
         self.resize(w, h)
-        #self.layout.setSpacing(max(w,h)/self.spacerRatioInvert)
-        self.layout.setSpacing(3)
 
 
 
@@ -233,9 +236,9 @@ class Cube3DView(Qtw.QScrollArea):
         self.layersWidget.setStyleSheet("#Custom_Slice_View_In {background: white}")
         self.layout=Qtw.QHBoxLayout(self)
         self.layersWidget.setLayout(self.layout)
-        self.layout.setSpacing(1)
+        self.layout.setSpacing(0)
 
-        self.layout.setContentsMargins(5, 5, 5, 5)
+        #self.layout.setContentsMargins(1, 1, 1, 1)
 
         self.ledLayers = []
 
@@ -245,9 +248,7 @@ class Cube3DView(Qtw.QScrollArea):
                                                 newColor_signal, eraseColor_signal, self))
             self.layout.addWidget(self.ledLayers[i])
         
-        
         self.setWidget(self.layersWidget)
-        #self.setWidgetResizable(True)
     
     def resizeEvent(self, event):
         screenHeight = self.screen().size().height()
@@ -321,7 +322,7 @@ class CCubeViewerSliced(Qtw.QWidget):
         self.cube_BottomView.setParent(None)
         self.cube_LeftView.setParent(None)
         self.cube_BackView.setParent(None)
-        self.clear()
+        self.tabWidget.clear()
     
     def createTabs(self, cubeSize : CubeSize):
         """Creates three representations along each axis in different tabs.
@@ -339,7 +340,7 @@ class CCubeViewerSliced(Qtw.QWidget):
         self.tabWidget.addTab(self.cube_LeftView, "Left to right")
         self.tabWidget.addTab(self.cube_BottomView, "Bottom to top")
     
-    def changeSize(self, cubeSize:CubeSize):
+    def changeCubeSize(self, cubeSize:CubeSize):
         """Change sizes of the cube."""
-        self.tabWidget.erase()
-        self.tabWidget.createTabs(cubeSize)
+        self.erase()
+        self.createTabs(cubeSize)

@@ -8,6 +8,7 @@ from CustomWidgets.CDrawer import CDrawer
 from CustomWidgets.CTypes import Axis, CubeSize, CubeLEDFrame_DATA
 from CustomWidgets.CCubeViewerSliced import CCubeViewerSliced
 from CustomWidgets.CAnimationTimeline import AnimationList, CubeLEDFrame
+from CustomWidgets.CFramelessDialog import NewAnimationDialog
 
 
 
@@ -29,17 +30,18 @@ class Animator(Qtw.QWidget):
     eraseColorLED_signal = QtCore.pyqtSignal(int,int,int)
     saveAnimation_signal = QtCore.pyqtSignal()
 
-    def __init__(self,parent=None):
+    def __init__(self, parent, cubeSizeInit:CubeSize = CubeSize(8,8,8)):
         super(Qtw.QWidget, self).__init__(parent)
 
         ## Attributes & Parameters
         self.parent = parent
-        self.cubeSize = CubeSize(8,8,8)
+        self.cubeSize = cubeSizeInit
         self.mainLayout=Qtw.QHBoxLayout(self)
         self.setLayout(self.mainLayout)
         self.animationViewerRatio = 0.15
         self.animatorWidth = self.screen().size().width() * self.animationViewerRatio
         self.animationName = "Animation"
+        self.animationSaved = True
 
         ## Widget instantiation
         self.toolBox = CToolBox(False, False, self.saveAnimation_signal, self)
@@ -75,10 +77,16 @@ class Animator(Qtw.QWidget):
         self.animationViewer.addFrameButton.clicked.connect(self.addFrame)
         self.animationViewer.timeLine.itemSelectionChanged.connect(self.changeCurrentFrame)
 
+        self.newColorLED_signal.connect(self.notSaved)
+        self.eraseColorLED_signal.connect(self.notSaved)
+        self.animationViewer.addFrameButton.clicked.connect(self.notSaved)
+
         self.saveAnimation_signal.connect(self.saveAnimation)
         self.SaveShortcut = Qtw.QShortcut(QKeySequence("Ctrl+S"), self)
         self.SaveShortcut.activated.connect(self.saveAnimation)
 
+    def notSaved(self, x=0, y=0, z=0, color = QColor(0,0,0)):
+        self.animationSaved = False
     
     def getCurrentColor(self) -> QColor:
         """ Return the color selected in the widget colorPicker(ColorPicker)."""
@@ -133,6 +141,18 @@ class Animator(Qtw.QWidget):
                 frameSTR = frame.encodeData() + '\n'
                 file.write(frameSTR)
             file.close()
+            self.animationSaved = True
+        else:
+            print('Saving canceled')
+    
+    def changeCubeSize(self, cubeSize : CubeSize):
+        self.cubeSize = cubeSize
+        self.cubeViewer.changeCubeSize(cubeSize)
+        self.cubeSliced.changeCubeSize(cubeSize)
+    
+    def isSaved(self):
+        return self.animationSaved
+
 
 
 
@@ -155,49 +175,79 @@ class StartingMenuBackground(Qtw.QWidget):
 
 
 class MainMenu(Qtw.QWidget):
-    def __init__(self, parent):
+    def __init__(self, newWindow_signal:QtCore.pyqtSignal, parent=None):
         super(Qtw.QWidget, self).__init__(parent)
         self.parent = parent
+        self.newWindow_signal = newWindow_signal
+
         self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
         self.setStyleSheet('MainMenu{background:white;}')
         layout = Qtw.QVBoxLayout(self)
         layout.addWidget(Qtw.QLineEdit(self))
 
-        self.animatorButton = Qtw.QPushButton('Animator', self, clicked=self.displayAnimator)
+        self.animatorButton = WindowSelectionButton('Animation', self.newWindow_signal, MainWindow.ANIMATOR, self)
         layout.addWidget(self.animatorButton)
 
-        self.labelButton = Qtw.QPushButton('Label', self, clicked=self.displayLabel)
+        self.labelButton = WindowSelectionButton('Start', self.newWindow_signal, MainWindow.STARTER, self)
         layout.addWidget(self.labelButton)
 
-    def displayAnimator(self):
-        self.parent.changeWindow(0)
-    
-    def displayLabel(self):
-        self.parent.changeWindow(1)
 
+
+class WindowSelectionButton(Qtw.QPushButton):
+
+    stylesheet = """
+    #Custom_Window_Button {
+        border: 1px solid #cbcbcb;
+        border-radius: 5px;
+        font-size: 16px;
+        background: white;
+    }
+    #Custom_Window_Button:hover {
+        border-color: rgb(139, 173, 228);
+        color: rgb(139, 173, 228);
+    }
+    #Custom_Window_Button:pressed {
+        color: #cbcbcb;
+        border-color: #cbcbcb;
+    }
+    """
+    def __init__(self, text : str, newWindow_signal:QtCore.pyqtSignal, menuIndex : int, parent=None):
+        super(Qtw.QPushButton, self).__init__(text, parent, cursor=QtCore.Qt.PointingHandCursor, toolTip='Change current editor', clicked=lambda: newWindow_signal.emit(menuIndex))
+        self.newWindow_signal = newWindow_signal
+        self.menuIndex = menuIndex
+
+        self.setSizePolicy(Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Preferred)
+        self.setObjectName('Custom_Window_Button')
+        self.setStyleSheet(self.stylesheet)
 
 
 class MainWindow(Qtw.QWidget):
+    newWindow_signal = QtCore.pyqtSignal(int)
+    ANIMATOR, STARTER = range(2)
     def __init__(self):
         super().__init__()
         self.setWindowTitle("CubAnimate")
 
+        self.CubeSize = CubeSize(8,8,8)
+
         ## Windows instantiation
-        self.animator = Animator(self)
+        self.animator = Animator(self, self.CubeSize)
         self.startBackground = StartingMenuBackground(self)
 
         ## Main menu
         self.drawerMenu = CDrawer(self, direction=CDrawer.LEFT)
-        self.mainMenu = MainMenu(self)
+        self.mainMenu = MainMenu(self.newWindow_signal, self)
         self.drawerMenu.setWidget(self.mainMenu)
 
         ## Windows manager
         self.leftlist = Qtw.QListWidget()
-        self.leftlist.insertItem(0, 'StarterBackground' )
-        self.leftlist.insertItem(1, 'Animator' )
+        self.leftlist.insertItem(self.STARTER, 'StarterBackground' )
+        self.leftlist.insertItem(self.ANIMATOR, 'Animator' )
         self.Stack = Qtw.QStackedWidget(self)
         self.Stack.addWidget(self.animator)
         self.Stack.addWidget(self.startBackground)
+
+        self.newWindow_signal.connect(self.changeWindow)
 
         ## MainWindow layout
         self.mainLayout=Qtw.QGridLayout(self)
@@ -206,10 +256,15 @@ class MainWindow(Qtw.QWidget):
         self.mainLayout.addWidget(self.Stack,0,1)      
         self.mainLayout.addWidget(Qtw.QPushButton('>', self, clicked=self.openMainMenu), 0, 0)
 
-        self.resize(self.screen().size()*0.8) #Do not delete if you want the window to maximized. I know it works, I just don't know WHY it works.
+        self.resize(self.screen().size()*0.8) #Do not delete if you want the window to maximized correctly... 
     
     def openMainMenu(self):
         self.drawerMenu.show()
     
-    def changeWindow(self,i):
-        self.Stack.setCurrentIndex(i)
+    def changeWindow(self, indexWindow):
+        if indexWindow == self.STARTER:
+            self.Stack.setCurrentIndex(indexWindow)
+        if indexWindow == self.ANIMATOR:
+            newAnimDialog = NewAnimationDialog(self)
+            newAnimDialog.exec_()
+            self.Stack.setCurrentIndex(indexWindow)

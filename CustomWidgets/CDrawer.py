@@ -9,10 +9,9 @@ Created on 2019年7月24日
 @file: CustomWidgets.CDrawer
 @description: 
 """
-from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint, QPointF
+from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint, QPointF, pyqtProperty
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtWidgets import QWidget, QApplication
-
 
 __Author__ = 'Irony'
 __Copyright__ = 'Copyright (c) 2019'
@@ -22,28 +21,33 @@ class CDrawer(QWidget):
 
     LEFT, TOP, RIGHT, BOTTOM = range(4)
 
-    def __init__(self, *args, stretch=1 / 3, direction=0, widget=None, **kwargs):
+    def __init__(self, *args, stretch=1 / 4, direction=0, widget=None, **kwargs):
         super(CDrawer, self).__init__(*args, **kwargs)
-        self.setWindowFlags(self.windowFlags(
-        ) | Qt.FramelessWindowHint | Qt.Popup | Qt.NoDropShadowWindowHint)
+        
+        self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint | Qt.Drawer | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
-        # 进入动画
-        self.animIn = QPropertyAnimation(
-            self, duration=500, easingCurve=QEasingCurve.OutCubic)
+        self.setStretch(stretch)
+        self.direction = direction
+        
+        ## Animation
+        self.animIn = QPropertyAnimation(self, duration=500, easingCurve=QEasingCurve.OutCubic)
         self.animIn.setPropertyName(b'pos')
-        # 离开动画
-        self.animOut = QPropertyAnimation(
-            self, duration=500, finished=self.onAnimOutEnd,
-            easingCurve=QEasingCurve.OutCubic)
+
+        self.animOut = QPropertyAnimation(self, duration=500, finished=self.onAnimOutEnd,easingCurve=QEasingCurve.OutCubic)
         self.animOut.setPropertyName(b'pos')
-        self.animOut.setDuration(500)
-        self.setStretch(stretch)        # 占比
-        self.direction = direction      # 方向
-        # 半透明背景
-        self.alphaWidget = QWidget(
-            self, objectName='CDrawer_alphaWidget',
-            styleSheet='#CDrawer_alphaWidget{background:rgba(55,55,55,100);}')
+
+        self.animFadeIn = QPropertyAnimation(self, duration=400, easingCurve=QEasingCurve.OutCubic)
+        self.animFadeIn.setPropertyName(b'opacityBG')
+
+        self.animFadeOut = QPropertyAnimation(self, duration=200, easingCurve=QEasingCurve.OutCubic)
+        self.animFadeOut.setPropertyName(b'opacityBG')
+
+        ## Background opacity
+        self.opacityBg = 100
+        self.stylesheetOpacity = '#CDrawer_alphaWidget{background:rgba(55,55,55,%i);}'
+        self.alphaWidget = QWidget(self, objectName='CDrawer_alphaWidget')
+        self.alphaWidget.setStyleSheet(self.stylesheetOpacity % (self.opacityBg))
         self.alphaWidget.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         self.setWidget(widget)          # 子控件
 
@@ -73,8 +77,11 @@ class CDrawer(QWidget):
         """进入动画
         :param geometry:
         """
+        self.animFadeIn.setStartValue(0)
+        self.animFadeIn.setEndValue(100)
+        self.animFadeIn.start()
+
         if self.direction == self.LEFT:
-            # 左侧抽屉
             self.widget.setGeometry(
                 0, 0, int(geometry.width() * self.stretch), geometry.height())
             self.widget.hide()
@@ -83,7 +90,6 @@ class CDrawer(QWidget):
             self.animIn.start()
             self.widget.show()
         elif self.direction == self.TOP:
-            # 上方抽屉
             self.widget.setGeometry(
                 0, 0, geometry.width(), int(geometry.height() * self.stretch))
             self.widget.hide()
@@ -92,7 +98,6 @@ class CDrawer(QWidget):
             self.animIn.start()
             self.widget.show()
         elif self.direction == self.RIGHT:
-            # 右侧抽屉
             width = int(geometry.width() * self.stretch)
             self.widget.setGeometry(
                 geometry.width() - width, 0, width, geometry.height())
@@ -103,7 +108,6 @@ class CDrawer(QWidget):
             self.animIn.start()
             self.widget.show()
         elif self.direction == self.BOTTOM:
-            # 下方抽屉
             height = int(geometry.height() * self.stretch)
             self.widget.setGeometry(
                 0, geometry.height() - height, geometry.width(), height)
@@ -117,7 +121,13 @@ class CDrawer(QWidget):
     def animationOut(self):
         """离开动画
         """
-        self.animIn.stop()  # 停止进入动画
+        self.animIn.stop()
+        self.animFadeIn.stop()
+
+        self.animFadeOut.setStartValue(100)
+        self.animFadeOut.setEndValue(0)
+        self.animFadeOut.start()
+
         geometry = self.widget.geometry()
         if self.direction == self.LEFT:
             # 左侧抽屉
@@ -146,6 +156,7 @@ class CDrawer(QWidget):
         # 模拟点击外侧关闭
         QApplication.sendEvent(self, QMouseEvent(
             QMouseEvent.MouseButtonPress, QPointF(-1, -1), Qt.LeftButton, Qt.NoButton, Qt.NoModifier))
+        self.close()
 
     def setWidget(self, widget):
         """设置子控件
@@ -156,6 +167,8 @@ class CDrawer(QWidget):
             widget.setParent(self)
             self.animIn.setTargetObject(widget)
             self.animOut.setTargetObject(widget)
+            self.animFadeIn.setTargetObject(self)
+            self.animFadeOut.setTargetObject(self)
 
     def setEasingCurve(self, easingCurve):
         """设置动画曲线
@@ -187,3 +200,13 @@ class CDrawer(QWidget):
         if direction < 0 or direction > 3:
             direction = self.LEFT
         self.direction = direction
+    
+    def getOpacityBG(self):
+        return self.opacityBg
+
+    def setOpacityBG(self, value):
+        self.opacityBg = value
+        self.alphaWidget.setStyleSheet(self.stylesheetOpacity % (self.opacityBg))
+
+    opacityBG = pyqtProperty(int, getOpacityBG, setOpacityBG)
+    
