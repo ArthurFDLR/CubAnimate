@@ -1,6 +1,8 @@
 ### EQUATION INTERPRETER WIDGET ###
 
+
 ## Importations ##
+# Imports modules available for download on the web #
 import sys
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -8,12 +10,16 @@ from matplotlib.figure import Figure
 from PyQt5 import QtGui, QtCore
 from PyQt5 import QtWidgets as Qtw
 from PyQt5.QtCore import pyqtSlot, QSize, QObject
-from PyQt5.QtGui import QVector3D
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QMainWindow, QPushButton, QAction, QLineEdit, QMessageBox, QHBoxLayout
+from PyQt5.QtGui import QVector3D, QKeySequence
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QMainWindow, QPushButton, QAction, QLineEdit, QMessageBox, QHBoxLayout, QShortcut
 from PyQt5.QtDataVisualization import Q3DSurface, QSurface3DSeries, QSurfaceDataItem, QSurfaceDataProxy, QValue3DAxis
 
 from numpy import *
 from Equation import *
+ 
+# Imports homemade modules # 
+from CTypes import * 
+
 
 ## Add functions/constants/operators to the list of those that can be displayed using the Equation module ##
 '''Already implemented functions : floor, ceil, round, sin, cos, tan, im, re, sqrt
@@ -27,6 +33,7 @@ addFn('ln',"ln({0:s})","\\ln\\left({0:s}\\right)",1,log)
 addFn('log',"log({0:s})","\\log\\left({0:s}\\right)",1,log10)
 addFn('arccos',"arccos({0:s})","\\arccos\\left({0:s}\\right)",1,arccos)
 addFn('arcsin',"arcsin({0:s})","\\arcsin\\left({0:s}\\right)",1,arcsin)
+
 
 ## Useful functions ##
 
@@ -87,7 +94,7 @@ class MainWindow(Qtw.QWidget):
         self.mainLayout.addWidget(self.textbox,1,0)
 
         # Create graph visualizer #
-        self.cubesize:list = [8, 8, 8]
+        self.cubesize = CubeSize(4,8,8)
         self.graph = Q3DSurface()
         self.screenSize = self.graph.screen().size()
         self.graph.setAspectRatio(1.0)
@@ -110,36 +117,37 @@ class MainWindow(Qtw.QWidget):
         # Connect button to function on_click #
         self.button.clicked.connect(self.on_click)
 
-        # Connect the enter key to funtion on_click #
-        ''' a faire'''
+        # Connect the enter key to button #
+        self.buttonShortcut = QShortcut(QKeySequence(QtCore.Qt.Key_Return), self.button)
+        self.buttonShortcut.activated.connect(self.on_click)
 
     
     @pyqtSlot()
     def on_click(self):
-        # Displays the function as LaTeX #
         try: 
+        # Displays the function as LaTeX  #
             f = Expression(self.textbox.text(),["x","z","t"])
             self.viewer.setPixmap(mathTex_to_QPixmap('$' + str(f) + '$',15))
         # Displays the graph #
             self.plot3D(f,self.cubesize)
             self.graph.addSeries(self.functionSeries)
         except:
+        # If the function is not a valid function, resetting graph [TO DO] and let the user know # 
             print("Unauthorized function")
-            self.graph()
 
-    def plot3D(self,func,csize:list,nbsamples:list=[50,50]):
+    def plot3D(self,func,csize:CubeSize,nbsamples:list=[50,50]):
         ''' E/ func: funtion to be diplayed on screen ; takes 3 parameters (x,y,t) with t optional (static animation)
             E/ csize: list containing 3 integers (sizeX,sizeY,sizeZ) to know the boundaries 
-            E/ nbsamples (OPTIONAL) : list containing 3 integers (sampleX,sampleY,sampleZ) to define the resolution of the graph
-            S/ No output, gives the command to display the graph '''
+            E/ nbsamples (OPTIONAL) : list containing 2 integers (sampleX,sampleZ) to define the resolution of the graph
+            S/ No output, sets the right data in the functionProxy to display the graph '''
         valuesArray = []
-        stepX=csize[0]/(nbsamples[0]-2)
-        stepZ=csize[2]/(nbsamples[1]-2)
+        stepX=csize.getSize(Axis.X)/(nbsamples[0]-2)
+        stepZ=csize.getSize(Axis.Z)/(nbsamples[1]-2)
         for i in range(nbsamples[1]):
             currentRow=[]
-            z=min(csize[2]-1,i*stepZ)
+            z=min(csize.getSize(Axis.Z)-1,i*stepZ)
             for j in range(nbsamples[0]):
-                x=min(csize[0]-1,j*stepX)
+                x=min(csize.getSize(Axis.X)-1,j*stepX)
                 y=func(x,z)
                 currentRow.append(QSurfaceDataItem(QVector3D(x,y,z)))
             valuesArray.append(currentRow)
@@ -153,3 +161,12 @@ if __name__ == '__main__':
     mainWid = MainWindow()
     mainWid.show()
     sys.exit(app.exec_())
+
+## TO-DO list ##
+# Display the "unauthorized function" text on the app and not on console
+# Reset graph display when unauthorized funtion typed
+# Allow functions of time : display a graph evolving in time
+# Add a "toolbox" that allows to increase graph resolution / adapt function to cube / input the cube size manually (??s)
+# Export function to discrete LED configuration
+# Enable color settings (choose a palette)
+
