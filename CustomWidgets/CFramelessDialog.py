@@ -38,8 +38,10 @@ class DropArea(QPushButton):
 
     changed = pyqtSignal(QMimeData)
 
-    def __init__(self, parent = None):
+    def __init__(self, loadNewAnimation_signal:pyqtSignal, parent = None):
         super(DropArea, self).__init__(parent, cursor=Qt.PointingHandCursor, toolTip='Import animation', clicked= self.searchFile)
+
+        self.loadNewAnimation_signal = loadNewAnimation_signal
 
         self.setMinimumSize(self.screen().size() / 4)
         self.setAcceptDrops(True)
@@ -69,18 +71,15 @@ class DropArea(QPushButton):
     def dropEvent(self, event):
         mimeData = event.mimeData()
         if self.isAnimation(mimeData):
-            print(mimeData.text())
-        else:
-            print('Wtf')
+            self.loadNewAnimation_signal.emit(mimeData.text()[8:])
         self.setBackgroundRole(QPalette.Dark)
         event.acceptProposedAction()
-
+        
     def dragLeaveEvent(self, event):
         self.clear()
         event.accept()
 
     def clear(self):
-        print("<drop content>")
         self.setBackgroundRole(QPalette.Dark)
         self.changed.emit(None)
     
@@ -96,7 +95,7 @@ class DropArea(QPushButton):
     
     def searchFile(self):
         directoryName, fileExtension = QFileDialog.getOpenFileName(self, 'Load animation',"./","Animation Files (*.anim)")
-        print(directoryName)
+        self.loadNewAnimation_signal.emit(directoryName)
 
 
 
@@ -123,15 +122,23 @@ class NewAnimationDialog(QDialog):
         font-size: 20px;
     }
     """
+    loadNewAnimation_signal = pyqtSignal(str)
 
     def __init__(self, *args, **kwargs):
         super(NewAnimationDialog, self).__init__(*args, **kwargs)
+
+        self.fileLocation = ''
+        self.createAnimation = True
+
+        self.loadNewAnimation_signal.connect(self.setFileLocation)
+
         self.setObjectName('Custom_Dialog')
         self.setModal(True)
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setStyleSheet(self.Stylesheet)
         self.initUi()
+
         # 添加阴影
         effect = QGraphicsDropShadowEffect(self)
         effect.setBlurRadius(12)
@@ -154,13 +161,26 @@ class NewAnimationDialog(QDialog):
         layout.addItem(QSpacerItem(
             40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum), 0, 2)
         layout.addWidget(QPushButton(
-            'r', self, clicked=self.accept, objectName='closeButton'), 0, 3)
+            'r', self, clicked=self.reject, objectName='closeButton'), 0, 3)
         layout.addItem(QSpacerItem(20, 40, QSizePolicy.Minimum,
                                    QSizePolicy.Expanding), 2, 0)
         
-        self.dropZone = DropArea()
+        self.dropZone = DropArea(self.loadNewAnimation_signal, self)
         layout.addWidget(self.dropZone, 1, 0, 1, 4)
+
+        layout.addWidget(QPushButton('Create animation', self, clicked=self.accept,cursor=Qt.PointingHandCursor, toolTip='Create animation'), 2, 0, 1, 4)
     
     def sizeHint(self):
         return self.screen().size() / 3
+    
+    def getFileLocation(self) -> str:
+        return self.fileLocation
+    
+    def setFileLocation(self, loc:str):
+        self.fileLocation = loc
+        self.createAnimation = False
+        self.accept()
+    
+    def createNewAnimation(self):
+        return self.createAnimation
     

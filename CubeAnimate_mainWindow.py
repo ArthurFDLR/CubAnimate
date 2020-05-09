@@ -43,6 +43,7 @@ class Animator(Qtw.QWidget):
         self.animatorWidth = self.screen().size().width() * self.animationViewerRatio
         self.animationName = "Animation"
         self.animationSaved = True
+        self.noAnimationEdited = True
 
         ## Widget instantiation
         self.toolBox = CToolBox(False, False, self.saveAnimation_signal, self)
@@ -153,6 +154,14 @@ class Animator(Qtw.QWidget):
     
     def isSaved(self):
         return self.animationSaved
+    
+    def createAnimation(self, cubeSize : CubeSize, name:str):
+        self.animationName = name
+        self.changeCubeSize(cubeSize)
+        self.noAnimationEdited = False
+    
+    def isEmpty(self):
+        return self.noAnimationEdited
 
 
 
@@ -192,7 +201,7 @@ class MainMenu(Qtw.QWidget):
         self.labelButton = WindowSelectionButton('Start', self.newWindow_signal, MainWindow.STARTER, self)
         layout.addWidget(self.labelButton)
 
-        self.equationButton = WindowSelectionButton('Equation mode', self.newWindow_signal, MainWindow.EQUATIONINTERPRETER, self)
+        self.equationButton = WindowSelectionButton('Equation mode', self.newWindow_signal, MainWindow.EQUATION_INTERPRETER, self)
         layout.addWidget(self.equationButton)
 
 
@@ -227,7 +236,7 @@ class WindowSelectionButton(Qtw.QPushButton):
 
 class MainWindow(Qtw.QWidget):
     newWindow_signal = QtCore.pyqtSignal(int)
-    ANIMATOR, STARTER, EQUATIONINTERPRETER = range(3)
+    STARTER, ANIMATOR, EQUATION_INTERPRETER = range(3)
     def __init__(self):
         super().__init__()
         self.setWindowTitle("CubAnimate")
@@ -245,14 +254,14 @@ class MainWindow(Qtw.QWidget):
         self.drawerMenu.setWidget(self.mainMenu)
 
         ## Windows manager
-        self.leftlist = Qtw.QListWidget()
-        self.leftlist.insertItem(self.STARTER, 'StarterBackground' )
-        self.leftlist.insertItem(self.ANIMATOR, 'Animator' )
-        self.leftlist.insertItem(self.EQUATIONINTERPRETER, 'EquationInterpreter')
-        self.Stack = Qtw.QStackedWidget(self)
-        self.Stack.addWidget(self.animator)
-        self.Stack.addWidget(self.startBackground)
-        self.Stack.addWidget(self.equationInterpreter)
+        self.windowList = Qtw.QListWidget()
+        self.windowList.insertItem(self.STARTER, 'StarterBackground' )
+        self.windowList.insertItem(self.ANIMATOR, 'Animator' )
+        self.windowList.insertItem(self.EQUATION_INTERPRETER, 'EquationInterpreter')
+        self.windowStack = Qtw.QStackedWidget(self)
+        self.windowStack.addWidget(self.startBackground)
+        self.windowStack.addWidget(self.animator)
+        self.windowStack.addWidget(self.equationInterpreter)
 
         self.newWindow_signal.connect(self.changeWindow)
 
@@ -260,7 +269,7 @@ class MainWindow(Qtw.QWidget):
         self.mainLayout=Qtw.QGridLayout(self)
         self.setLayout(self.mainLayout)
 
-        self.mainLayout.addWidget(self.Stack,0,1)      
+        self.mainLayout.addWidget(self.windowStack,0,1)      
         self.mainLayout.addWidget(Qtw.QPushButton('>', self, clicked=self.openMainMenu), 0, 0)
 
         self.resize(self.screen().size()*0.8) #Do not delete if you want the window to maximized correctly... 
@@ -270,10 +279,16 @@ class MainWindow(Qtw.QWidget):
     
     def changeWindow(self, indexWindow):
         if indexWindow == self.STARTER:
-            self.Stack.setCurrentIndex(indexWindow)
+            self.windowStack.setCurrentIndex(indexWindow)
         if indexWindow == self.ANIMATOR:
-            newAnimDialog = NewAnimationDialog(self)
-            newAnimDialog.exec_()
-            self.Stack.setCurrentIndex(indexWindow)
-        if indexWindow == self.EQUATIONINTERPRETER:
-            self.Stack.setCurrentIndex(indexWindow)
+            if self.animator.isEmpty(): #Create new animation or import
+                newAnimDialog = NewAnimationDialog(self)
+                if newAnimDialog.exec_(): #If pop-up not exited
+                    if newAnimDialog.createNewAnimation(): #Create a new animation
+                        print('Create new animation')
+                    else: #Load an existing animation
+                        print('Load animation: ' + newAnimDialog.getFileLocation())
+            else:
+                self.windowStack.setCurrentIndex(indexWindow)
+        if indexWindow == self.EQUATION_INTERPRETER:
+            self.windowStack.setCurrentIndex(indexWindow)

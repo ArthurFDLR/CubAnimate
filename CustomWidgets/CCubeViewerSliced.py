@@ -257,6 +257,9 @@ class Cube3DView(Qtw.QScrollArea):
         if screenHeight * 0.2 > layerHeight:
             self.setMinimumHeight(layerHeight*1.1)
         self.layersWidget.setMaximumWidth(layerWidth*len(self.ledLayers)*1.05)
+        
+        for layer in self.ledLayers: # Update scroll bar
+            layer.updateGeometry()
     
     def getCurrentColor(self) -> QColor :
         return self._parent.getCurrentColor()
@@ -344,3 +347,4 @@ class CCubeViewerSliced(Qtw.QWidget):
         """Change sizes of the cube."""
         self.erase()
         self.createTabs(cubeSize)
+    
