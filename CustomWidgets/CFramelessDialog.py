@@ -1,7 +1,7 @@
 from PyQt5.QtCore import Qt, QSize, QTimer, pyqtSignal, QMimeData, QRect
 from PyQt5.QtGui import QPalette, QPixmap, QIcon
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QWidget,\
-    QGraphicsDropShadowEffect, QPushButton, QGridLayout, QSpacerItem, QSizePolicy, QLabel
+    QGraphicsDropShadowEffect, QPushButton, QGridLayout, QSpacerItem, QSizePolicy, QLabel, QFileDialog
 from PyQt5.QtSvg import QSvgWidget
 
 
@@ -39,7 +39,7 @@ class DropArea(QPushButton):
     changed = pyqtSignal(QMimeData)
 
     def __init__(self, parent = None):
-        super(DropArea, self).__init__(parent, clicked= lambda : print('Clicked'))
+        super(DropArea, self).__init__(parent, cursor=Qt.PointingHandCursor, toolTip='Import animation', clicked= self.searchFile)
 
         self.setMinimumSize(self.screen().size() / 4)
         self.setAcceptDrops(True)
@@ -93,7 +93,10 @@ class DropArea(QPushButton):
         h = self.size().height()
         w = self.size().width()
         self.svgWidget.setFixedSize(min(h,w)*0.8,min(h,w)*0.8)
-
+    
+    def searchFile(self):
+        directoryName, fileExtension = QFileDialog.getOpenFileName(self, 'Load animation',"./","Animation Files (*.anim)")
+        print(directoryName)
 
 
 

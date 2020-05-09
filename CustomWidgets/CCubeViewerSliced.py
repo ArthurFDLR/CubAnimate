@@ -238,7 +238,7 @@ class Cube3DView(Qtw.QScrollArea):
         self.layersWidget.setLayout(self.layout)
         self.layout.setSpacing(0)
 
-        #self.layout.setContentsMargins(1, 1, 1, 1)
+        self.layout.setContentsMargins(1, 1, 1, 1)
 
         self.ledLayers = []
 
