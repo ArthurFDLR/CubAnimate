@@ -87,20 +87,24 @@ class CubeLEDFrame_DATA:
         return strOut
     
     def decode(self, dataLine : str):
+        
         colorNameSize = 7
         dataLength = len(dataLine)
         listColorName = [ dataLine[i:i+colorNameSize] for i in range(0, dataLength, colorNameSize) ]
-
-        numLED = 0
-        if len(listColorName) == self.cubeSize.getTotalNode(): # Check size coherency
-            for z in range(self.cubeSize.getSize(Axis.Z)):
+        
+        self.LEDcolors.clear()
+        for i in range(self.cubeSize.getSize(Axis.X)):
+            self.LEDcolors.append([])
+            for j in range(self.cubeSize.getSize(Axis.Y)):
+                self.LEDcolors[i].append([])
+                for k in range(self.cubeSize.getSize(Axis.Z)):
+                    index = i + j * self.cubeSize.getSize(Axis.X) + k * self.cubeSize.getSize(Axis.X) * self.cubeSize.getSize(Axis.Y) 
+                    self.LEDcolors[i][j].append(QColor(listColorName[index]))
+    
+    def printColors(self):
+        for z in range(self.cubeSize.getSize(Axis.Z)):
                 for y in range(self.cubeSize.getSize(Axis.Y)):
                     for x in range(self.cubeSize.getSize(Axis.X)):
-                        self.LEDcolors[x][y][z].setNamedColor(listColorName[numLED])
-                        if not self.LEDcolors[x][y][z].isValid():
-                            print("Color reading error")
-                            self.LEDcolors[x][y][z] = self.nullColor
-                        numLED +=1
-        else:
-            print("Size incoherency")
+                        print(self.LEDcolors[x][y][z].name())
+
 

@@ -108,7 +108,6 @@ class ScatterDataModifier(QtCore.QObject):
                 self.newColor_signal.emit(int(xStr), int(yStr), int(zStr), currentColor)
         
     def changeColor(self, posX :int, posY :int, posZ :int, color : QColor):
-        print(str(posX) + " " + str(posY) + " " + str(posZ))
         self.matrixLEDserie[posX][posY][posZ].setBaseColor(color)
     
     def eraseColor(self, posX :int, posY :int, posZ :int):
@@ -172,3 +171,6 @@ class CubeViewer3D(Qtw.QWidget):
 
     def changeCubeSize(self, cubeSize : CubeSize):
         self.modifier.changeCubeSize(cubeSize)
+    
+    def getDisplayedColor(self, x:int, y:int, z:int) -> QColor:
+        return self.modifier.matrixLEDserie[x][y][z].baseColor()

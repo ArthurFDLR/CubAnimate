@@ -71,11 +71,12 @@ class Animator(Qtw.QWidget):
         
         ## Other
         self.blankIllustration = self.getCurrentCubePixmap()
-        self.currentSelectedFrame = self.addFrame()
+        #self.currentSelectedFrame = self.addFrame()
+        self.currentSelectedFrame = None
 
         ## Signal connection
-        self.newColorLED_signal.connect(self.currentSelectedFrame.getFrameData().setColorLED)
-        self.eraseColorLED_signal.connect(self.currentSelectedFrame.getFrameData().eraseColorLED)
+        #self.newColorLED_signal.connect(self.currentSelectedFrame.getFrameData().setColorLED)
+        #self.eraseColorLED_signal.connect(self.currentSelectedFrame.getFrameData().eraseColorLED)
         self.animationViewer.addFrameButton.clicked.connect(self.addFrame)
         self.animationViewer.timeLine.itemSelectionChanged.connect(self.changeCurrentFrame)
 
@@ -101,28 +102,43 @@ class Animator(Qtw.QWidget):
     
     def changeCurrentFrame(self):
         """ Change the frame being edited."""
-        self.currentSelectedFrame.setIllustration(self.getCurrentCubePixmap()) #Update illustration of the leaved frame
+
+        if self.currentSelectedFrame != None:
+            self.currentSelectedFrame.setIllustration(self.getCurrentCubePixmap()) #Update illustration of the leaved frame
+        
         newFrame = self.animationViewer.timeLine.selectedItems()[0] 
         newFrameData = newFrame.getFrameData()
         newSize = newFrameData.getSize()
 
-        if self.currentSelectedFrame.getFrameData().getSize() == newSize: #Verify size compatibility
-            self.newColorLED_signal.disconnect(self.currentSelectedFrame.getFrameData().setColorLED) #Disconnect old frame
-            self.eraseColorLED_signal.disconnect(self.currentSelectedFrame.getFrameData().eraseColorLED)
+        if self.currentSelectedFrame != None:
+            if self.currentSelectedFrame.getFrameData().getSize() == newSize: #Verify size compatibility
+                self.newColorLED_signal.disconnect(self.currentSelectedFrame.getFrameData().setColorLED) #Disconnect old frame
+                self.eraseColorLED_signal.disconnect(self.currentSelectedFrame.getFrameData().eraseColorLED)
+                for x in range(newSize.getSize(Axis.X)):
+                    for y in range(newSize.getSize(Axis.Y)):
+                        for z in range(newSize.getSize(Axis.Z)):
+                            newColor = newFrameData.getColorLED(x,y,z)
+                            if self.cubeViewer.getDisplayedColor(x,y,z) != newColor:  #Great gain in refresh speed if the frames are similare
+                                self.newColorLED_signal.emit(x,y,z, newColor)
+
+                self.currentSelectedFrame = newFrame
+                self.newColorLED_signal.connect(self.currentSelectedFrame.getFrameData().setColorLED) #Connect new frame
+                self.eraseColorLED_signal.connect(self.currentSelectedFrame.getFrameData().eraseColorLED)
+            else:
+                print("Cube size incompatibility")
+        else:
             for x in range(newSize.getSize(Axis.X)):
                 for y in range(newSize.getSize(Axis.Y)):
                     for z in range(newSize.getSize(Axis.Z)):
                         newColor = newFrameData.getColorLED(x,y,z)
-                        if self.currentSelectedFrame.getFrameData().getColorLED(x,y,z) != newColor:  #Great gain in refresh speed if the frames are similare
+                        if self.cubeViewer.getDisplayedColor(x,y,z) != newColor:  #Great gain in refresh speed if the frames are similare
                             self.newColorLED_signal.emit(x,y,z, newColor)
-
             self.currentSelectedFrame = newFrame
             self.newColorLED_signal.connect(self.currentSelectedFrame.getFrameData().setColorLED) #Connect new frame
             self.eraseColorLED_signal.connect(self.currentSelectedFrame.getFrameData().eraseColorLED)
-        else:
-            print("Cube size incompatibility")
+
     
-    def addFrame(self):
+    def addFrame(self) -> CubeLEDFrame:
         """ Create and add a new frame to the animation."""
         num = len(self.animationViewer.frameList)
         frameWidth = self.animatorWidth*0.9
@@ -133,10 +149,10 @@ class Animator(Qtw.QWidget):
         return self.animationViewer.frameList[num]
     
     def saveAnimation(self):
-        directoryName, fileExtension = Qtw.QFileDialog.getSaveFileName(self, 'Save File',"./{}".format(self.animationName),"Animation Files (*.anim)")
+        fileLocation, fileExtension = Qtw.QFileDialog.getSaveFileName(self, 'Save File',"./{}".format(self.animationName.replace(' ','_')),"Animation Files (*.anim)")
 
-        if len(directoryName)>0:
-            file = open(directoryName,'w')
+        if len(fileLocation)>0:
+            file = open(fileLocation,'w')
             headerLine = "{}-{},{},{}-{}\n".format(self.animationName, self.cubeSize.getSize(Axis.X), self.cubeSize.getSize(Axis.Y), self.cubeSize.getSize(Axis.Z), str(self.toolBox.getFPS()))
             file.write(headerLine)
             for frame in self.animationViewer.frameList:
@@ -159,12 +175,28 @@ class Animator(Qtw.QWidget):
         self.animationName = name
         self.changeCubeSize(cubeSize)
         self.noAnimationEdited = False
+        self.addFrame()
     
     def isEmpty(self):
         return self.noAnimationEdited
-
-
-
+    
+    def loadAnimation(self, fileLocation : str):
+        file = open(fileLocation,'r')
+        for line in file:
+            if line[0] == '#':
+                self.loadFrame(line[:-1])
+        file.close()
+    
+    def loadFrame(self, dataLine:str):
+        self.addFrame()
+        self.currentSelectedFrame.decodeData(dataLine)
+        for x in range(self.cubeSize.getSize(Axis.X)):
+            for y in range(self.cubeSize.getSize(Axis.Y)):
+                for z in range(self.cubeSize.getSize(Axis.Z)):
+                    newColor = self.currentSelectedFrame.getFrameData().getColorLED(x,y,z)
+                    if self.cubeViewer.getDisplayedColor(x,y,z) != newColor:  #Great gain in refresh speed if the frames are similare
+                        self.newColorLED_signal.emit(x,y,z, newColor)
+        self.currentSelectedFrame.setIllustration(self.getCurrentCubePixmap())
 
 class StartingMenuBackground(Qtw.QWidget):
     newColorLED_signal = QtCore.pyqtSignal(int,int,int, QColor)
@@ -241,10 +273,10 @@ class MainWindow(Qtw.QWidget):
         super().__init__()
         self.setWindowTitle("CubAnimate")
 
-        self.CubeSize = CubeSize(8,8,8)
+        self.cubeSize = CubeSize(8,8,8)
 
         ## Windows instantiation
-        self.animator = Animator(self, self.CubeSize)
+        self.animator = Animator(self, self.cubeSize)
         self.startBackground = StartingMenuBackground(self)
         self.equationInterpreter = EIWindow(self)
 
@@ -280,15 +312,22 @@ class MainWindow(Qtw.QWidget):
     def changeWindow(self, indexWindow):
         if indexWindow == self.STARTER:
             self.windowStack.setCurrentIndex(indexWindow)
+
         if indexWindow == self.ANIMATOR:
             if self.animator.isEmpty(): #Create new animation or import
                 newAnimDialog = NewAnimationDialog(self)
                 if newAnimDialog.exec_(): #If pop-up not exited
                     if newAnimDialog.createNewAnimation(): #Create a new animation
                         print('Create new animation')
-                    else: #Load an existing animation
+                        self.animator.createAnimation(self.cubeSize,'New animation')
+                        self.windowStack.setCurrentIndex(indexWindow)
+                    elif newAnimDialog.loadAnimation(): #Load an existing animation
                         print('Load animation: ' + newAnimDialog.getFileLocation())
+                        self.animator.changeCubeSize(self.cubeSize)
+                        self.animator.loadAnimation(newAnimDialog.getFileLocation())
+                        self.windowStack.setCurrentIndex(indexWindow)
             else:
                 self.windowStack.setCurrentIndex(indexWindow)
+
         if indexWindow == self.EQUATION_INTERPRETER:
             self.windowStack.setCurrentIndex(indexWindow)

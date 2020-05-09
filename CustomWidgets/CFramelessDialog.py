@@ -58,7 +58,6 @@ class DropArea(QPushButton):
         
 
     def dragEnterEvent(self, event):
-        print("<drop content>")
         self.setBackgroundRole(QPalette.Highlight)
 
         if self.isAnimation(event.mimeData()):
@@ -181,6 +180,9 @@ class NewAnimationDialog(QDialog):
         self.createAnimation = False
         self.accept()
     
-    def createNewAnimation(self):
+    def createNewAnimation(self) -> bool:
         return self.createAnimation
+    
+    def loadAnimation(self) -> bool:
+        return len(self.fileLocation)>0
     

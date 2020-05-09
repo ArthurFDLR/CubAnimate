@@ -206,5 +206,4 @@ class AnimationList(Qtw.QWidget):
             self.timeLine.takeItem(index)
             self.timeLine.setCurrentItem(self.frameList[min(index,len(self.frameList)-1)])
             for i in range(index,len(self.frameList)):
-                print(i)
                 self.frameList[i].frame.setTitle("#{}".format(i+1))
