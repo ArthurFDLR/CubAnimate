@@ -84,29 +84,30 @@ class EIWindow(Qtw.QWidget):
         self.mainLayout=Qtw.QGridLayout(self)
         self.setLayout(self.mainLayout)
 
-        self.viewer = Qtw.QLabel()
-        self.viewer.setPixmap(mathTex_to_QPixmap('$ ... $', 15))
-        self.mainLayout.addWidget(self.viewer,2,0)
-
         # Create label #
-        self.mainlabel = Qtw.QLabel("Type your equation here, must be a function of (x,z):")
+        self.mainlabel = Qtw.QLabel("Type your equation here, must be a function of (x,y):")
         self.mainLayout.addWidget(self.mainlabel,0,0)
 
         # Create textbox #
         self.textbox = QLineEdit(self)
         self.mainLayout.addWidget(self.textbox,1,0)
 
+        # Create LaTeX viewer # 
+        self.viewer = Qtw.QLabel()
+        self.viewer.setPixmap(mathTex_to_QPixmap('$ ... $', 15))
+        self.mainLayout.addWidget(self.viewer,2,0)
+
         # Create graph visualizer #
         self.cubesize = CubeSize(4,8,8)
         self.graph = Q3DSurface()
         self.screenSize = self.graph.screen().size()
-        self.graph.setAspectRatio(1.0)
+        self.graph.setAspectRatio(2.0)
         self.graph.setAxisX(QValue3DAxis())
         self.graph.setAxisY(QValue3DAxis())
         self.graph.setAxisZ(QValue3DAxis())
-        self.graph.axisX().setTitle("X - Depth")
-        self.graph.axisY().setTitle("Y - Height")
-        self.graph.axisZ().setTitle("Z - Width")
+        self.graph.axisX().setTitle("Depth")
+        self.graph.axisY().setTitle("Height")
+        self.graph.axisZ().setTitle("Width")
         self.functionProxy = QSurfaceDataProxy()
         self.functionSeries = QSurface3DSeries(self.functionProxy)
         self.graphvisualizer = Qtw.QWidget.createWindowContainer(self.graph)
@@ -129,14 +130,15 @@ class EIWindow(Qtw.QWidget):
     def on_click(self):
         try: 
         # Displays the function as LaTeX  #
-            f = Expression(self.textbox.text(),["x","z","t"])
+            f = Expression(self.textbox.text(),["x","y","t"])
             self.viewer.setPixmap(mathTex_to_QPixmap('$' + str(f) + '$',15))
         # Displays the graph #
             self.plot3D(f,self.cubesize)
             self.graph.addSeries(self.functionSeries)
         except:
-        # If the function is not a valid function, resetting graph [TO DO] and let the user know # 
-            print("Unauthorized function")
+        # If the function is not a valid function, let the user know and reset the graph [TO DO] # 
+            self.viewer.setPixmap(mathTex_to_QPixmap('Invalid function',10))
+            self.graph.removeSeries(self.functionSeries)
 
     def plot3D(self,func,csize:CubeSize,nbsamples:list=[50,50]):
         ''' E/ func: funtion to be diplayed on screen ; takes 3 parameters (x,y,t) with t optional (static animation)
@@ -155,6 +157,7 @@ class EIWindow(Qtw.QWidget):
                 currentRow.append(QSurfaceDataItem(QVector3D(x,y,z)))
             valuesArray.append(currentRow)
         self.functionProxy.resetArray(valuesArray)      
+           
 
 
 ## What is actually running ##
@@ -166,10 +169,9 @@ if __name__ == '__main__':
     sys.exit(app.exec_())
 
 ## TO-DO list ##
-# Display the "unauthorized function" text on the app and not on console
-# Reset graph display when unauthorized funtion typed
 # Allow functions of time : display a graph evolving in time
 # Add a "toolbox" that allows to increase graph resolution / adapt function to cube / input the cube size manually (??s)
 # Export function to discrete LED configuration
 # Enable color settings (choose a palette)
+# Layout coherent with the rest of the app
 
