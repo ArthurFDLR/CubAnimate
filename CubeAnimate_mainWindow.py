@@ -9,6 +9,7 @@ from CustomWidgets.CTypes import Axis, CubeSize, CubeLEDFrame_DATA
 from CustomWidgets.CCubeViewerSliced import CCubeViewerSliced
 from CustomWidgets.CAnimationTimeline import AnimationList, CubeLEDFrame
 from CustomWidgets.CFramelessDialog import NewAnimationDialog
+from CustomWidgets.CEIWindow import EIWindow
 
 
 
@@ -191,6 +192,9 @@ class MainMenu(Qtw.QWidget):
         self.labelButton = WindowSelectionButton('Start', self.newWindow_signal, MainWindow.STARTER, self)
         layout.addWidget(self.labelButton)
 
+        self.equationButton = WindowSelectionButton('Equation mode', self.newWindow_signal, MainWindow.EQUATIONINTERPRETER, self)
+        layout.addWidget(self.equationButton)
+
 
 
 class WindowSelectionButton(Qtw.QPushButton):
@@ -223,7 +227,7 @@ class WindowSelectionButton(Qtw.QPushButton):
 
 class MainWindow(Qtw.QWidget):
     newWindow_signal = QtCore.pyqtSignal(int)
-    ANIMATOR, STARTER = range(2)
+    ANIMATOR, STARTER, EQUATIONINTERPRETER = range(3)
     def __init__(self):
         super().__init__()
         self.setWindowTitle("CubAnimate")
@@ -233,6 +237,7 @@ class MainWindow(Qtw.QWidget):
         ## Windows instantiation
         self.animator = Animator(self, self.CubeSize)
         self.startBackground = StartingMenuBackground(self)
+        self.equationInterpreter = EIWindow(self)
 
         ## Main menu
         self.drawerMenu = CDrawer(self)
@@ -243,9 +248,11 @@ class MainWindow(Qtw.QWidget):
         self.leftlist = Qtw.QListWidget()
         self.leftlist.insertItem(self.STARTER, 'StarterBackground' )
         self.leftlist.insertItem(self.ANIMATOR, 'Animator' )
+        self.leftlist.insertItem(self.EQUATIONINTERPRETER, 'EquationInterpreter')
         self.Stack = Qtw.QStackedWidget(self)
         self.Stack.addWidget(self.animator)
         self.Stack.addWidget(self.startBackground)
+        self.Stack.addWidget(self.equationInterpreter)
 
         self.newWindow_signal.connect(self.changeWindow)
 
@@ -267,4 +274,6 @@ class MainWindow(Qtw.QWidget):
         if indexWindow == self.ANIMATOR:
             newAnimDialog = NewAnimationDialog(self)
             newAnimDialog.exec_()
+            self.Stack.setCurrentIndex(indexWindow)
+        if indexWindow == self.EQUATIONINTERPRETER:
             self.Stack.setCurrentIndex(indexWindow)

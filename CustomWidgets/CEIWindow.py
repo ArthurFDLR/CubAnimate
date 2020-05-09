@@ -17,8 +17,11 @@ from PyQt5.QtDataVisualization import Q3DSurface, QSurface3DSeries, QSurfaceData
 from numpy import *
 from Equation import *
  
-# Imports homemade modules # 
-from CTypes import * 
+# Imports homemade modules #
+try:
+    from CustomWidgets.CTypes import * 
+except: 
+    from CTypes import *
 
 
 ## Add functions/constants/operators to the list of those that can be displayed using the Equation module ##
@@ -72,9 +75,9 @@ def mathTex_to_QPixmap(mathTex, fs):
     
 ## Useful classes ## 
 
-class MainWindow(Qtw.QWidget):
-    def __init__(self):
-        super().__init__()
+class EIWindow(Qtw.QWidget):
+    def __init__(self,parent=None):
+        super(Qtw.QWidget, self).__init__(parent)
 
         self.setWindowTitle("Equation interpreter")
 
@@ -158,8 +161,8 @@ class MainWindow(Qtw.QWidget):
 
 if __name__ == '__main__':    
     app = Qtw.QApplication(sys.argv)
-    mainWid = MainWindow()
-    mainWid.show()
+    mainWid = EIWindow()
+    mainWid.showMaximized()
     sys.exit(app.exec_())
 
 ## TO-DO list ##
