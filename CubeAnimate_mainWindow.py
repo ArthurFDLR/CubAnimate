@@ -8,8 +8,9 @@ from CustomWidgets.CDrawer import CDrawer
 from CustomWidgets.CTypes import Axis, CubeSize, CubeLEDFrame_DATA
 from CustomWidgets.CCubeViewerSliced import CCubeViewerSliced
 from CustomWidgets.CAnimationTimeline import AnimationList, CubeLEDFrame
-from CustomWidgets.CFramelessDialog import NewAnimationDialog
+from CustomWidgets.CFramelessDialog import NewAnimationDialog, LoadingDialog
 from CustomWidgets.CEIWindow import EIWindow
+#from CustomWidgets.CWaitingSpinnerWidget import QtWaitingSpinner
 
 
 
@@ -198,6 +199,7 @@ class Animator(Qtw.QWidget):
                         self.newColorLED_signal.emit(x,y,z, newColor)
         self.currentSelectedFrame.setIllustration(self.getCurrentCubePixmap())
 
+
 class StartingMenuBackground(Qtw.QWidget):
     newColorLED_signal = QtCore.pyqtSignal(int,int,int, QColor)
     eraseColorLED_signal = QtCore.pyqtSignal(int,int,int)
@@ -268,12 +270,14 @@ class WindowSelectionButton(Qtw.QPushButton):
 
 class MainWindow(Qtw.QWidget):
     newWindow_signal = QtCore.pyqtSignal(int)
+    waitingCursor_signal = QtCore.pyqtSignal(bool)
     STARTER, ANIMATOR, EQUATION_INTERPRETER = range(3)
-    def __init__(self):
+
+    def __init__(self, mainApplication : Qtw.QApplication):
         super().__init__()
         self.setWindowTitle("CubAnimate")
-
         self.cubeSize = CubeSize(8,8,8)
+        self.mainApplication = mainApplication
 
         ## Windows instantiation
         self.animator = Animator(self, self.cubeSize)
@@ -296,6 +300,7 @@ class MainWindow(Qtw.QWidget):
         self.windowStack.addWidget(self.equationInterpreter)
 
         self.newWindow_signal.connect(self.changeWindow)
+        self.waitingCursor_signal.connect(self.setWaitingCursor)
 
         ## MainWindow layout
         self.mainLayout=Qtw.QGridLayout(self)
@@ -304,30 +309,48 @@ class MainWindow(Qtw.QWidget):
         self.mainLayout.addWidget(self.windowStack,0,1)      
         self.mainLayout.addWidget(Qtw.QPushButton('>', self, clicked=self.openMainMenu), 0, 0)
 
-        self.resize(self.screen().size()*0.8) #Do not delete if you want the window to maximized correctly... 
+        self.resize(self.screen().size()*0.8) #Do not delete if you want the window to maximized correctly...
+
+        #self.waitingIcon = LoadingDialog(self)
+        #self.waitingIcon.start()
+        #self.waitingIcon.stop()
+
+    def setWaitingCursor(self, activate : bool):
+        
+        if activate:
+            self.mainApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+            print('On')
+        else:
+            self.mainApplication.restoreOverrideCursor()
+            print('Off')
     
     def openMainMenu(self):
         self.drawerMenu.show()
     
     def changeWindow(self, indexWindow):
+
         if indexWindow == self.STARTER:
             self.windowStack.setCurrentIndex(indexWindow)
 
         if indexWindow == self.ANIMATOR:
             if self.animator.isEmpty(): #Create new animation or import
                 newAnimDialog = NewAnimationDialog(self)
+
                 if newAnimDialog.exec_(): #If pop-up not exited
+                    self.waitingCursor_signal.emit(True)
                     if newAnimDialog.createNewAnimation(): #Create a new animation
                         print('Create new animation')
                         self.animator.createAnimation(self.cubeSize,'New animation')
-                        self.windowStack.setCurrentIndex(indexWindow)
                     elif newAnimDialog.loadAnimation(): #Load an existing animation
                         print('Load animation: ' + newAnimDialog.getFileLocation())
                         self.animator.changeCubeSize(self.cubeSize)
                         self.animator.loadAnimation(newAnimDialog.getFileLocation())
-                        self.windowStack.setCurrentIndex(indexWindow)
+                    self.waitingCursor_signal.emit(False)
+                    self.windowStack.setCurrentIndex(indexWindow)
             else:
                 self.windowStack.setCurrentIndex(indexWindow)
-
+            
         if indexWindow == self.EQUATION_INTERPRETER:
             self.windowStack.setCurrentIndex(indexWindow)
+        
+        self.drawerMenu.animationOut()

@@ -5,6 +5,6 @@ import sys
 
 if __name__ == '__main__':    
     app = QtWidgets.QApplication(sys.argv)
-    mainWid = MainWindow()
+    mainWid = MainWindow(app)
     mainWid.showMaximized()
     sys.exit(app.exec_())
