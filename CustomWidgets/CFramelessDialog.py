@@ -1,4 +1,4 @@
-from PyQt5.QtCore import Qt, QSize, QTimer, pyqtSignal, QMimeData, QRect
+from PyQt5.QtCore import Qt, QSize, QTimer, pyqtSignal, QMimeData, QRect, QThread
 from PyQt5.QtGui import QPalette, QPixmap, QIcon, QColor, QPainter
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QWidget,\
     QGraphicsDropShadowEffect, QPushButton, QGridLayout, QSpacerItem, QSizePolicy, QLabel, QFileDialog
@@ -25,8 +25,9 @@ class DropArea(QPushButton):
         border-color: rgb(139, 173, 228);
     }
     QPushButton {
-        border: 1px solid #cbcbcb;
+        border: 2px solid #cbcbcb;
         border-radius: 10px;
+        border-style: dashed;
         font-size: 16px;
         background: white;
     }
@@ -122,6 +123,18 @@ class NewAnimationDialog(QDialog):
         color: #a9a9a9;
         font-size: 20px;
     }
+
+    #Custom_Button {
+    border: 1px solid rgb(200,200,200);
+    border-radius: 10px;
+    }
+    #Custom_Button:hover {
+        border-color: rgb(139, 173, 228);
+    }
+    #Custom_Button:pressed {
+        color: #cbcbcb;
+    }
+
     """
     loadNewAnimation_signal = pyqtSignal(str)
 
@@ -168,7 +181,10 @@ class NewAnimationDialog(QDialog):
         self.dropZone = DropArea(self.loadNewAnimation_signal, self)
         self.layout.addWidget(self.dropZone, 1, 0, 1, 4)
 
-        self.layout.addWidget(QPushButton('Create animation', self, clicked=self.accept, cursor=Qt.PointingHandCursor, toolTip='Create animation'), 2, 0, 1, 4)
+        self.createButton = QPushButton('Create animation', self, clicked=self.accept, cursor=Qt.PointingHandCursor, toolTip='Create animation')
+        self.createButton.setMinimumHeight(self.dropZone.height() / 2)
+        self.createButton.setObjectName('Custom_Button')
+        self.layout.addWidget(self.createButton, 2, 0, 1, 4)
         
 
     def sizeHint(self):
@@ -249,14 +265,19 @@ class QtWaitingSpinner(QWidget):
         self.initialize()
 
     def initialize(self):
-        self.timer = QTimer(self)
+        #self.timerThread = QThread()
+        #self.timerThread.start()
+        self.timer = QTimer()
+        #self.timer.moveToThread(self.timerThread)
         self.timer.timeout.connect(self.rotate)
+        self.timer.stop()
         self.updateSize()
         self.updateTimer()
         self.hide()
 
     def rotate(self):
         self.mCurrentCounter += 1
+        print('rotate')
         if self.mCurrentCounter > self.numberOfLines():
             self.mCurrentCounter = 0
         self.update()

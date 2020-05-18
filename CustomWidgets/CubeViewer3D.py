@@ -32,6 +32,7 @@ class ScatterDataModifier(QtCore.QObject):
         self.m_graph.activeTheme().setFont(font)
         self.m_graph.activeTheme().setColorStyle(Q3DTheme.ColorStyleUniform)
         self.m_graph.activeTheme().setSingleHighlightColor(self.nullColor)
+        self.m_graph.activeTheme().setBackgroundEnabled(False)
         self.m_graph.setShadowQuality(QAbstract3DGraph.ShadowQualitySoftLow)
 
         ## Camera
@@ -174,3 +175,6 @@ class CubeViewer3D(Qtw.QWidget):
     
     def getDisplayedColor(self, x:int, y:int, z:int) -> QColor:
         return self.modifier.matrixLEDserie[x][y][z].baseColor()
+    
+    def setBackgroundColor(self, color:QColor):
+        self.graph.activeTheme().setWindowColor(color)

@@ -10,6 +10,7 @@ from CustomWidgets.CCubeViewerSliced import CCubeViewerSliced
 from CustomWidgets.CAnimationTimeline import AnimationList, CubeLEDFrame
 from CustomWidgets.CFramelessDialog import NewAnimationDialog, LoadingDialog
 from CustomWidgets.CEIWindow import EIWindow
+from CustomWidgets.CGradientDesigner import GradientDesigner
 #from CustomWidgets.CWaitingSpinnerWidget import QtWaitingSpinner
 
 
@@ -189,6 +190,7 @@ class Animator(Qtw.QWidget):
         file.close()
     
     def loadFrame(self, dataLine:str):
+        self.noAnimationEdited = False
         self.addFrame()
         self.currentSelectedFrame.decodeData(dataLine)
         for x in range(self.cubeSize.getSize(Axis.X)):
@@ -198,6 +200,11 @@ class Animator(Qtw.QWidget):
                     if self.cubeViewer.getDisplayedColor(x,y,z) != newColor:  #Great gain in refresh speed if the frames are similare
                         self.newColorLED_signal.emit(x,y,z, newColor)
         self.currentSelectedFrame.setIllustration(self.getCurrentCubePixmap())
+    
+    def setBackgroundColor(self, color:QColor):
+        self.cubeViewer.setBackgroundColor(color)
+        self.setStyleSheet("background-color: {}".format(color.name()))
+
 
 
 class StartingMenuBackground(Qtw.QWidget):
@@ -215,7 +222,23 @@ class StartingMenuBackground(Qtw.QWidget):
     
     def getCurrentColor(self) -> QColor :
         return QColor(255,0,0)
+    
+    def setBackgroundColor(self, color:QColor):
+        self.cubeViewer.setBackgroundColor(color)
 
+
+class HueEditor(Qtw.QWidget):
+    def __init__(self, parent):
+        super(Qtw.QWidget, self).__init__(parent)
+        self.parent = parent
+        self.cubeSize = CubeSize(8,8,8)
+
+        self.layout = Qtw.QVBoxLayout(self)
+        self.gradientViewer = GradientDesigner()
+        self.layout.addWidget(self.gradientViewer)
+    
+    def setBackgroundColor(self, color:QColor):
+        self.setStyleSheet("background-color: {}".format(color.name()))
 
 
 class MainMenu(Qtw.QWidget):
@@ -232,11 +255,14 @@ class MainMenu(Qtw.QWidget):
         self.animatorButton = WindowSelectionButton('Animation', self.newWindow_signal, MainWindow.ANIMATOR, self)
         layout.addWidget(self.animatorButton)
 
-        self.labelButton = WindowSelectionButton('Start', self.newWindow_signal, MainWindow.STARTER, self)
-        layout.addWidget(self.labelButton)
+        self.startButton = WindowSelectionButton('Start', self.newWindow_signal, MainWindow.STARTER, self)
+        layout.addWidget(self.startButton)
 
         self.equationButton = WindowSelectionButton('Equation mode', self.newWindow_signal, MainWindow.EQUATION_INTERPRETER, self)
         layout.addWidget(self.equationButton)
+
+        self.hueEditorButton = WindowSelectionButton('HUE mode', self.newWindow_signal, MainWindow.HUE_EDITOR, self)
+        layout.addWidget(self.hueEditorButton)
 
 
 
@@ -271,18 +297,21 @@ class WindowSelectionButton(Qtw.QPushButton):
 class MainWindow(Qtw.QWidget):
     newWindow_signal = QtCore.pyqtSignal(int)
     waitingCursor_signal = QtCore.pyqtSignal(bool)
-    STARTER, ANIMATOR, EQUATION_INTERPRETER = range(3)
+    STARTER, ANIMATOR, EQUATION_INTERPRETER, HUE_EDITOR = range(4)
 
     def __init__(self, mainApplication : Qtw.QApplication):
         super().__init__()
         self.setWindowTitle("CubAnimate")
         self.cubeSize = CubeSize(8,8,8)
         self.mainApplication = mainApplication
+        self.setObjectName('Custom_Main_Window')
+        self.backgroundColor = QColor(250,250,255)
 
         ## Windows instantiation
         self.animator = Animator(self, self.cubeSize)
         self.startBackground = StartingMenuBackground(self)
         self.equationInterpreter = EIWindow(self)
+        self.hueEditor = HueEditor(self)
 
         ## Main menu
         self.drawerMenu = CDrawer(self)
@@ -294,10 +323,12 @@ class MainWindow(Qtw.QWidget):
         self.windowList.insertItem(self.STARTER, 'StarterBackground' )
         self.windowList.insertItem(self.ANIMATOR, 'Animator' )
         self.windowList.insertItem(self.EQUATION_INTERPRETER, 'EquationInterpreter')
+        self.windowList.insertItem(self.HUE_EDITOR, 'HueEditor')
         self.windowStack = Qtw.QStackedWidget(self)
         self.windowStack.addWidget(self.startBackground)
         self.windowStack.addWidget(self.animator)
         self.windowStack.addWidget(self.equationInterpreter)
+        self.windowStack.addWidget(self.hueEditor)
 
         self.newWindow_signal.connect(self.changeWindow)
         self.waitingCursor_signal.connect(self.setWaitingCursor)
@@ -310,7 +341,7 @@ class MainWindow(Qtw.QWidget):
         self.mainLayout.addWidget(Qtw.QPushButton('>', self, clicked=self.openMainMenu), 0, 0)
 
         self.resize(self.screen().size()*0.8) #Do not delete if you want the window to maximized correctly...
-
+        self.changeBackgorundColor(self.backgroundColor)
         #self.waitingIcon = LoadingDialog(self)
         #self.waitingIcon.start()
         #self.waitingIcon.stop()
@@ -319,38 +350,46 @@ class MainWindow(Qtw.QWidget):
         
         if activate:
             self.mainApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+            #self.waitingIcon.start()
             print('On')
         else:
             self.mainApplication.restoreOverrideCursor()
+            #self.waitingIcon.stop()
             print('Off')
     
     def openMainMenu(self):
         self.drawerMenu.show()
     
     def changeWindow(self, indexWindow):
-
-        if indexWindow == self.STARTER:
+        if indexWindow == self.STARTER:                         ## STARTING WINDOW
             self.windowStack.setCurrentIndex(indexWindow)
 
-        if indexWindow == self.ANIMATOR:
-            if self.animator.isEmpty(): #Create new animation or import
-                newAnimDialog = NewAnimationDialog(self)
-
-                if newAnimDialog.exec_(): #If pop-up not exited
-                    self.waitingCursor_signal.emit(True)
-                    if newAnimDialog.createNewAnimation(): #Create a new animation
-                        print('Create new animation')
-                        self.animator.createAnimation(self.cubeSize,'New animation')
-                    elif newAnimDialog.loadAnimation(): #Load an existing animation
-                        print('Load animation: ' + newAnimDialog.getFileLocation())
-                        self.animator.changeCubeSize(self.cubeSize)
-                        self.animator.loadAnimation(newAnimDialog.getFileLocation())
-                    self.waitingCursor_signal.emit(False)
-                    self.windowStack.setCurrentIndex(indexWindow)
-            else:
+        if indexWindow == self.ANIMATOR:                        ## ANIMATION WINDOW
+            if not self.animator.isEmpty():
+                self.windowStack.setCurrentIndex(indexWindow)
+    
+            newAnimDialog = NewAnimationDialog(self)
+            if newAnimDialog.exec_(): #If pop-up not exited
+                self.waitingCursor_signal.emit(True)
+                if newAnimDialog.createNewAnimation(): #Create a new animation
+                    print('Create new animation')
+                    self.animator.createAnimation(self.cubeSize,'New animation')
+                elif newAnimDialog.loadAnimation(): #Load an existing animation
+                    print('Load animation: ' + newAnimDialog.getFileLocation())
+                    self.animator.changeCubeSize(self.cubeSize)
+                    self.animator.loadAnimation(newAnimDialog.getFileLocation())
+                self.waitingCursor_signal.emit(False)
                 self.windowStack.setCurrentIndex(indexWindow)
             
-        if indexWindow == self.EQUATION_INTERPRETER:
+        if indexWindow == self.EQUATION_INTERPRETER:            ## EQUATION WINDOW
             self.windowStack.setCurrentIndex(indexWindow)
         
+        if indexWindow == self.HUE_EDITOR:                      ## HUE WINDOW
+            self.windowStack.setCurrentIndex(indexWindow)
+
         self.drawerMenu.animationOut()
+    
+    def changeBackgorundColor(self, color:QColor):
+        self.setStyleSheet("#Custom_Main_Window {background: %s;}"%(self.backgroundColor.name()))
+        self.startBackground.setBackgroundColor(self.backgroundColor)
+        self.animator.setBackgroundColor(self.backgroundColor)
