@@ -29,8 +29,8 @@ class GradientDesigner(QtWidgets.QWidget):
 
         else:
             self._gradient = [
-                (0.0, '#ffffff'),
-                (1.0, '#ffffff'),
+                (0.0, QtGui.QColor(255,255,255)),
+                (1.0, QtGui.QColor(255,255,255)),
             ]
 
         # Stop point handle sizes.
@@ -46,6 +46,29 @@ class GradientDesigner(QtWidgets.QWidget):
         effect.setOffset(0, 0)
         effect.setColor(QtCore.Qt.gray)
         self.setGraphicsEffect(effect)
+    
+    
+    def getColorAt(self, pos:float) -> QtGui.QColor :
+        """ Return color at position pos in the current gradient.
+
+        Parameters:
+            pos (float): Position in percent (from 0.0 to 1.0)
+        """
+
+        if pos > 0.0 and pos < 1.0:
+            indexSup = 0
+            while pos > self._gradient[indexSup][0]:
+                indexSup += 1
+            posSup, colorSup = self._gradient[indexSup]
+            posInf, colorInf = self._gradient[indexSup-1]
+            ratio = (pos - posInf) / (posSup - posInf)
+            r = int(colorInf.red() * (1.0 - ratio) + colorSup.red() * ratio)
+            g = int(colorInf.green() * (1.0 - ratio) + colorSup.green() * ratio)
+            b = int(colorInf.blue() * (1.0 - ratio) + colorSup.blue() * ratio)
+            return QtGui.QColor(r,g,b)
+        else:
+            return self._gradient[0][1]
+    
 
     def paintEvent(self, e):
         painter = QtGui.QPainter(self)
@@ -56,7 +79,7 @@ class GradientDesigner(QtWidgets.QWidget):
         # Draw the linear horizontal gradient.
         gradient = QtGui.QLinearGradient(0, 0, width, 0)
         for stop, color in self._gradient:
-            gradient.setColorAt(stop, QtGui.QColor(color))
+            gradient.setColorAt(stop, color)
 
         rect = QtCore.QRect(0, 0, width, height)
         painter.fillRect(rect, gradient)
@@ -67,7 +90,7 @@ class GradientDesigner(QtWidgets.QWidget):
         # Draw the stop handles.
         for stop, color in self._gradient:
             gradientBrush = QtGui.QRadialGradient(stop * width - self._handleRadius/2, y - self._handleRadius/2, 70)
-            gradientBrush.setColorAt(1, QtGui.QColor(color))
+            gradientBrush.setColorAt(1, color)
             gradientBrush.setColorAt(0, Qt.white)
 
             painter.setBrush(QtGui.QBrush(gradientBrush))
@@ -153,10 +176,10 @@ class GradientDesigner(QtWidgets.QWidget):
         if ret == QtWidgets.QDialog.Accepted:
             lastIndex = len(self._gradient) - 1
             if n in [0,lastIndex]: #if border stop
-                self.setColorAtPosition(0, color.name())
-                self.setColorAtPosition(lastIndex, color.name())
+                self.setColorAtPosition(0, color)
+                self.setColorAtPosition(lastIndex, color)
             else:
-                self.setColorAtPosition(n, color.name())
+                self.setColorAtPosition(n, color)
         
 
     def _find_stop_handle_for_event(self, e, to_exclude=None):
@@ -170,7 +193,7 @@ class GradientDesigner(QtWidgets.QWidget):
             e.y() <= midpoint + self._handleRadius
         ):
 
-            for n, (stop, color) in enumerate(self._gradient):
+            for n, (stop, _) in enumerate(self._gradient):
                 if to_exclude and n in to_exclude:
                     # Allow us to skip the extreme ends of the gradient.
                     continue

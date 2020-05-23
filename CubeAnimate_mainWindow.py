@@ -288,12 +288,12 @@ class HueEditor(Qtw.QWidget):
     
     def cubeViewerUpdate(self):
         self.i += 1
-        if self.i > 250:
+        if self.i > 100:
             self.i = 0
         for x in range(self.cubeSize.getSize(Axis.X)):
             for y in range(self.cubeSize.getSize(Axis.Y)):
                 for z in range(self.cubeSize.getSize(Axis.Z)):
-                    self.cubeViewer.modifier.changeColor(x,y,z,QColor(255-self.i,self.i,self.i))
+                    self.cubeViewer.modifier.changeColor(x,y,z, self.gradientViewer.getColorAt(self.i/100) )
     
     def getCurrentColor(self):
         return QColor(250,250,250)
