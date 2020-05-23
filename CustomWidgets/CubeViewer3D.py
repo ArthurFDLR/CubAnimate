@@ -7,16 +7,19 @@ from PyQt5.QtDataVisualization import (Q3DCamera, Q3DTheme, Q3DScatter,
 
 from CustomWidgets.CTypes import CubeSize, Axis
 
-class ScatterDataModifier(QtCore.QObject):
-    def __init__(self, cubeSize : CubeSize, newColor_signal:QtCore.pyqtSignal, eraseColor_signal:QtCore.pyqtSignal, scatter, parent):
-        super(ScatterDataModifier, self).__init__()
+class ScatterDataModifierInteract(QtCore.QObject):
+    def __init__(self, interactive, cubeSize : CubeSize, newColor_signal:QtCore.pyqtSignal, eraseColor_signal:QtCore.pyqtSignal, scatter, parent):
+        super(ScatterDataModifierInteract, self).__init__()
 
         self.parent = parent
         self.cubeSize = cubeSize
-        self.eraseColor_signal = eraseColor_signal
-        self.newColor_signal = newColor_signal
-        self.eraseColor_signal.connect(self.eraseColor)
-        self.newColor_signal.connect(self.changeColor)
+        self.interactive = interactive
+
+        if self.interactive :
+            self.eraseColor_signal = eraseColor_signal
+            self.newColor_signal = newColor_signal
+            self.eraseColor_signal.connect(self.eraseColor)
+            self.newColor_signal.connect(self.changeColor)
 
         self.nullColor = QColor(255,255,255)
         self.nullColor.setAlpha(100)
@@ -96,17 +99,18 @@ class ScatterDataModifier(QtCore.QObject):
         self.instantiateLED()
 
     def ledClicked(self, serie : QAbstract3DSeries): #Colored the led if not already set to the given color, erase it otherwise
-        self.m_graph.clearSelection() #Avoid selected item color shifting
-        if serie is not None:
-            xStr,yStr,zStr = serie.name().split()
-            x = int(xStr)
-            y = int(yStr)
-            z = int(zStr)
-            currentColor = self.getCurrentColor()
-            if self.matrixLEDserie[x][y][z].baseColor() == currentColor:
-                self.eraseColor_signal.emit(int(xStr), int(yStr), int(zStr))
-            else:
-                self.newColor_signal.emit(int(xStr), int(yStr), int(zStr), currentColor)
+        if self.interactive :
+            self.m_graph.clearSelection() #Avoid selected item color shifting
+            if serie is not None:
+                xStr,yStr,zStr = serie.name().split()
+                x = int(xStr)
+                y = int(yStr)
+                z = int(zStr)
+                currentColor = self.getCurrentColor()
+                if self.matrixLEDserie[x][y][z].baseColor() == currentColor:
+                    self.eraseColor_signal.emit(int(xStr), int(yStr), int(zStr))
+                else:
+                    self.newColor_signal.emit(int(xStr), int(yStr), int(zStr), currentColor)
         
     def changeColor(self, posX :int, posY :int, posZ :int, color : QColor):
         self.matrixLEDserie[posX][posY][posZ].setBaseColor(color)
@@ -119,8 +123,8 @@ class ScatterDataModifier(QtCore.QObject):
 
 
 
-class CubeViewer3D(Qtw.QWidget):
-    def __init__(self, cubeSize : CubeSize, newColor_signal:QtCore.pyqtSignal, eraseColor_signal:QtCore.pyqtSignal, parent):
+class CubeViewer3DInteract(Qtw.QWidget):
+    def __init__(self, interactive, cubeSize : CubeSize, newColor_signal:QtCore.pyqtSignal, eraseColor_signal:QtCore.pyqtSignal, parent):
         super(Qtw.QWidget, self).__init__(parent)
         
         self.parent = parent
@@ -142,7 +146,7 @@ class CubeViewer3D(Qtw.QWidget):
         self.layout = Qtw.QGridLayout(self)
         self.layout.addWidget(self.container, 0,0)
 
-        self.modifier = ScatterDataModifier(cubeSize, newColor_signal, eraseColor_signal, self.graph, self)
+        self.modifier = ScatterDataModifierInteract(interactive, cubeSize, newColor_signal, eraseColor_signal, self.graph, self)
     
     def getCurrentColor(self) -> QColor :
         return self.parent.getCurrentColor()
@@ -178,3 +182,4 @@ class CubeViewer3D(Qtw.QWidget):
     
     def setBackgroundColor(self, color:QColor):
         self.graph.activeTheme().setWindowColor(color)
+

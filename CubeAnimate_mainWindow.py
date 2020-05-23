@@ -2,7 +2,7 @@ from PyQt5 import QtWidgets as Qtw
 from PyQt5 import QtCore
 from PyQt5.QtGui import QColor, QFont, QVector3D, QPixmap, QIcon, QKeySequence
 
-from CustomWidgets.CubeViewer3D import CubeViewer3D
+from CustomWidgets.CubeViewer3D import CubeViewer3DInteract
 from CustomWidgets.CToolBox.CToolBox import CToolBox
 from CustomWidgets.CDrawer import CDrawer
 from CustomWidgets.CTypes import Axis, CubeSize, CubeLEDFrame_DATA
@@ -23,7 +23,7 @@ class Animator(Qtw.QWidget):
         blankIllustration (QPixmap): Default illustration to use when a new frame is created.
         self.currentSelectedFrame (CubeLEDFrame): Currently modified frame.
         colorPicker (ColorPicker): Widget to select the painting color.
-        cubeViewer (CubeViewer3D): Widget showing the cube in 3D.
+        cubeViewer (CubeViewer3DInteract): Widget showing the cube in 3D.
         cubeSliced (CCubeViewerSliced): Widget showing the sliced cube.
         newColorLED_signal (QtCore.pyqtSignal(int,int,int,QColor)): Signal sended when the led at the given position has a new color.
         eraseColorLED_signal (QtCore.pyqtSignal(int,int,int)): Signal sended when the led at the given position is erased.
@@ -49,7 +49,7 @@ class Animator(Qtw.QWidget):
 
         ## Widget instantiation
         self.toolBox = CToolBox(False, False, self.saveAnimation_signal, self)
-        self.cubeViewer = CubeViewer3D(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
+        self.cubeViewer = CubeViewer3DInteract(True, self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
         self.cubeSliced = CCubeViewerSliced(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
         self.animationViewer = AnimationList(self.cubeSize, self.animatorWidth)
 
@@ -98,7 +98,7 @@ class Animator(Qtw.QWidget):
         return self.toolBox.getColor()
     
     def getCurrentCubePixmap(self) -> QPixmap:
-        """ Return the vizualisation of the widget cubeViewer(CubeViewer3D)."""
+        """ Return the vizualisation of the widget cubeViewer(CubeViewer3DInteract)."""
         illustrationWidth = self.animatorWidth*0.85
         return self.cubeViewer.getCurrentFramePixmap(QtCore.QSize(illustrationWidth,illustrationWidth*0.9))
     
@@ -217,7 +217,7 @@ class StartingMenuBackground(Qtw.QWidget):
         self.cubeSize = CubeSize(8,8,8)
 
         self.layout = Qtw.QVBoxLayout(self)
-        self.cubeViewer = CubeViewer3D(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
+        self.cubeViewer = CubeViewer3DInteract(False, self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
         self.layout.addWidget(self.cubeViewer)
     
     def getCurrentColor(self) -> QColor :
@@ -227,18 +227,76 @@ class StartingMenuBackground(Qtw.QWidget):
         self.cubeViewer.setBackgroundColor(color)
 
 
+class TimerThread(QtCore.QThread):
+    ''' Begin with start(), end with terminate() '''
+    def __init__(self, signal:QtCore.pyqtSignal, timeout:int, *args, **kwargs):
+        QtCore.QThread.__init__(self, *args, **kwargs)
+        self.timeout = timeout
+        self.signal = signal
+        self.dataCollectionTimer = QtCore.QTimer()
+        self.dataCollectionTimer.moveToThread(self)
+        self.dataCollectionTimer.timeout.connect(lambda: self.signal.emit())
+
+    def run(self):
+        self.dataCollectionTimer.start(self.timeout)
+        loop = QtCore.QEventLoop()
+        loop.exec_()
+
 class HueEditor(Qtw.QWidget):
-    def __init__(self, parent):
+    
+    saveHUE_signal = QtCore.pyqtSignal()
+    anim_signal = QtCore.pyqtSignal()
+
+    def __init__(self, cubeSizeInit:CubeSize, parent):
         super(Qtw.QWidget, self).__init__(parent)
         self.parent = parent
-        self.cubeSize = CubeSize(8,8,8)
+        self.cubeSize = cubeSizeInit
+        self.mainLayout=Qtw.QHBoxLayout(self)
+        self.setLayout(self.mainLayout)
 
-        self.layout = Qtw.QVBoxLayout(self)
+        ## Update test
+        self.anim_signal.connect(self.cubeViewerUpdate)
+        timer = TimerThread(self.anim_signal, int(1000/30))
+        timer.start()
+        self.i=0
+
+        ## Widget instantiation
+        self.toolBox = CToolBox(False, False, self.saveHUE_signal, self)
+        self.cubeViewer = CubeViewer3DInteract(False, self.cubeSize, None, None, self)
         self.gradientViewer = GradientDesigner()
-        self.layout.addWidget(self.gradientViewer)
+
+        ## Window layout
+        self.horizontlSpliter = Qtw.QSplitter(QtCore.Qt.Horizontal)
+        self.verticalSpliter = Qtw.QSplitter(QtCore.Qt.Vertical)
+
+        self.horizontlSpliter.addWidget(self.toolBox)
+        self.horizontlSpliter.addWidget(self.cubeViewer)
+        self.horizontlSpliter.setStretchFactor(0,0)
+        self.horizontlSpliter.setStretchFactor(1,1)
+
+        self.verticalSpliter.addWidget(self.horizontlSpliter)
+        self.verticalSpliter.addWidget(self.gradientViewer)
+        self.verticalSpliter.setStretchFactor(0,1)
+        self.verticalSpliter.setStretchFactor(1,0)
+
+        self.mainLayout.addWidget(self.verticalSpliter)
+
+        self.saveHUE_signal.connect(lambda: print('Save HUE'))
     
     def setBackgroundColor(self, color:QColor):
         self.setStyleSheet("background-color: {}".format(color.name()))
+    
+    def cubeViewerUpdate(self):
+        self.i += 1
+        if self.i > 250:
+            self.i = 0
+        for x in range(self.cubeSize.getSize(Axis.X)):
+            for y in range(self.cubeSize.getSize(Axis.Y)):
+                for z in range(self.cubeSize.getSize(Axis.Z)):
+                    self.cubeViewer.modifier.changeColor(x,y,z,QColor(255-self.i,self.i,self.i))
+    
+    def getCurrentColor(self):
+        return QColor(250,250,250)
 
 
 class MainMenu(Qtw.QWidget):
@@ -311,7 +369,7 @@ class MainWindow(Qtw.QWidget):
         self.animator = Animator(self, self.cubeSize)
         self.startBackground = StartingMenuBackground(self)
         self.equationInterpreter = EIWindow(self)
-        self.hueEditor = HueEditor(self)
+        self.hueEditor = HueEditor(self.cubeSize, self)
 
         ## Main menu
         self.drawerMenu = CDrawer(self)
