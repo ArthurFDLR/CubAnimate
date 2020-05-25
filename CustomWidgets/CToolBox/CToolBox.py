@@ -35,6 +35,9 @@ QLineEdit, QLabel, QTabWidget {
     background: white;
     border-radius: 3px;
 }
+#Custom_ToolBox {
+    background: white;
+}
 CColorPalettes {
     min-width: 322px;
     max-width: 322px;
@@ -155,19 +158,19 @@ class CToolBox(QWidget):
 
     selectedColor = QColor(255,0,0)
 
-    def __init__(self, alphaSelection : bool, movableWindow : bool, saveAnimation_signal:pyqtSignal, *args, **kwargs):
+    def __init__(self, alphaSelection : bool, movableWindow : bool, saveAnimation_signal:pyqtSignal, playAnimation_signal:pyqtSignal, *args, **kwargs):
         super(CToolBox, self).__init__(*args, **kwargs)
 
         self.alphaON = alphaSelection
         self.movableON = movableWindow
 
         self.saveAnimation_signal = saveAnimation_signal
+        self.playAnimation_signal = playAnimation_signal
 
         self.animationFPS = 24
 
         self.setObjectName('Custom_Color_Dialog')
-        #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
-        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        #self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setStyleSheet(Stylesheet)
         self.mPos = None
         self.initUi()
@@ -205,7 +208,9 @@ class CToolBox(QWidget):
         self.upperLayout.addWidget(self.labelName,0,0)
 
         self.saveButton = QPushButton("Save", self, cursor=Qt.PointingHandCursor, toolTip='Export animation',clicked= lambda :self.saveAnimation_signal.emit())
+        self.playButton = QPushButton("Play animation", self, cursor=Qt.PointingHandCursor, toolTip='Play animation on screen',clicked= lambda :self.playAnimation_signal.emit())
         self.upperLayout.addWidget(self.saveButton,2,0)
+        self.upperLayout.addWidget(self.playButton,2,1)
         layout.addWidget(QWidget(self.colorView, objectName='splitLine'))
 
         ## Color selection

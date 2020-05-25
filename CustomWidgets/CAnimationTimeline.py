@@ -207,3 +207,10 @@ class AnimationList(Qtw.QWidget):
             self.timeLine.setCurrentItem(self.frameList[min(index,len(self.frameList)-1)])
             for i in range(index,len(self.frameList)):
                 self.frameList[i].frame.setTitle("#{}".format(i+1))
+    
+    def clearAllFrames(self):
+        size = len(self.frameList)
+        while size > 0:
+            self.frameList.pop()
+            self.timeLine.takeItem(size-1)
+            size -= 1

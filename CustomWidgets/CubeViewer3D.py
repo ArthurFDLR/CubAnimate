@@ -132,12 +132,10 @@ class CubeViewer3DInteract(Qtw.QWidget):
         self.graph.setAspectRatio(1.0)
         self.currentColor = self.parent.getCurrentColor()
         self.onWidget = False
-
         self.imageZoom = 160
-
-        self.container = Qtw.QWidget.createWindowContainer(self.graph)
-
         self.screenSize = self.graph.screen().size()
+        
+        self.container = Qtw.QWidget.createWindowContainer(self.graph)
         self.container.setMinimumSize(QtCore.QSize(self.screenSize.width() /5, self.screenSize.height() / 5))
         self.container.setMaximumSize(self.screenSize)
         self.container.setSizePolicy(Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Expanding)

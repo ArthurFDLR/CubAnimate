@@ -14,6 +14,86 @@ from CustomWidgets.CGradientDesigner import GradientDesigner
 #from CustomWidgets.CWaitingSpinnerWidget import QtWaitingSpinner
 
 
+class DimmingLayerWidget(Qtw.QWidget):
+    stylesheetOpacity = """
+    #CD_alphaWidget {
+        background:rgba(55,55,55,%i);
+        }
+    #closeButton {
+        min-width: 50px;
+        min-height: 50px;
+        font-family: "Webdings";
+        qproperty-text: "r";
+        border-radius: 10px;
+        color: white;
+        background: red;
+    }
+    #closeButton:hover {
+        color: white;
+        background: rgb(190, 0, 0);
+    }
+    """
+
+    def __init__(self, dimmedWidget:Qtw.QWidget, focusedWidget:Qtw.QWidget):
+        super(DimmingLayerWidget, self).__init__(dimmedWidget, objectName='CD_alphaWidget')
+        self.focusedWidget = focusedWidget
+        self.dimmedWidget = dimmedWidget
+        self.opacity = 0
+        self.isOn = False
+
+        ## Configuration
+        self.setAttribute(QtCore.Qt.WA_StyledBackground) # Needed to apply style sheet
+        self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, False)
+        self.resize(self.screen().size())
+        self.setStyleSheet(self.stylesheetOpacity % (self.opacityDim))
+        self.lower()
+        self.exitButton = Qtw.QPushButton('r', self, clicked=lambda:self.dimOut(False), objectName='closeButton')
+        self.exitButton.hide()
+
+        ## Animations
+        self.animFadeIn = QtCore.QPropertyAnimation(self, duration=50, easingCurve=QtCore.QEasingCurve.Linear)
+        self.animFadeIn.setPropertyName(b'opacityDim')
+        self.animFadeIn.setTargetObject(self)
+
+        self.animFadeOut = QtCore.QPropertyAnimation(self, duration=50, easingCurve=QtCore.QEasingCurve.Linear, finished=lambda:self.lower())
+        self.animFadeOut.setPropertyName(b'opacityDim')
+        self.animFadeOut.setTargetObject(self)
+
+    
+    def dimOut(self, on:bool):
+        if on:
+            if not self.isOn:
+                self.isOn = True
+                self.raise_()
+
+                self.opacity = 0
+                self.animFadeIn.setStartValue(0)
+                self.animFadeIn.setEndValue(100)
+                self.animFadeIn.start()
+                self.exitButton.show()
+
+        else:
+            if self.isOn:
+                self.isOn = False
+                self.animFadeIn.stop()
+                self.opacity = 100
+                self.animFadeOut.setStartValue(100)
+                self.animFadeOut.setEndValue(0)
+                self.animFadeOut.start()
+                #self.lower()
+                self.exitButton.hide()
+
+    def getOpacityDim(self):
+        return self.opacity
+
+    def setOpacityDim(self, value):
+        self.opacity = value
+        self.setStyleSheet(self.stylesheetOpacity % (self.opacity))
+
+    opacityDim = QtCore.pyqtProperty(int, getOpacityDim, setOpacityDim)
+
+    def moveButton(self, upRightWindowX:int, upRightWindowY:int):
+        self.exitButton.move(upRightWindowX + 20, upRightWindowY)
 
 class Animator(Qtw.QWidget):
     """ Main widget allowing the user to create animations.
@@ -32,6 +112,13 @@ class Animator(Qtw.QWidget):
     newColorLED_signal = QtCore.pyqtSignal(int,int,int, QColor)
     eraseColorLED_signal = QtCore.pyqtSignal(int,int,int)
     saveAnimation_signal = QtCore.pyqtSignal()
+    playAnimation_signal = QtCore.pyqtSignal()
+
+    stylesheet = """
+    QSplitter::handle {
+        image: url(drop.svg);
+    }
+    """
 
     def __init__(self, parent, cubeSizeInit:CubeSize = CubeSize(8,8,8)):
         super(Qtw.QWidget, self).__init__(parent)
@@ -46,14 +133,17 @@ class Animator(Qtw.QWidget):
         self.animationName = "Animation"
         self.animationSaved = True
         self.noAnimationEdited = True
+        self.setObjectName('Animator_Widget')
+        self.setStyleSheet(self.stylesheet)
 
         ## Widget instantiation
-        self.toolBox = CToolBox(False, False, self.saveAnimation_signal, self)
+        self.toolBox = CToolBox(False, False, self.saveAnimation_signal, self.playAnimation_signal, self)
         self.cubeViewer = CubeViewer3DInteract(True, self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
         self.cubeSliced = CCubeViewerSliced(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
         self.animationViewer = AnimationList(self.cubeSize, self.animatorWidth)
 
         ## Window layout
+        self.setContentsMargins(0,0,0,0)
         self.horizontlSpliter = Qtw.QSplitter(QtCore.Qt.Horizontal)
         self.verticalSpliter = Qtw.QSplitter(QtCore.Qt.Vertical)
 
@@ -71,6 +161,9 @@ class Animator(Qtw.QWidget):
 
         self.mainLayout.addWidget(self.verticalSpliter)
         
+        ## Dim out layer
+        self.alphaWidget = DimmingLayerWidget(self, self.cubeViewer)
+
         ## Other
         self.blankIllustration = self.getCurrentCubePixmap()
         #self.currentSelectedFrame = self.addFrame()
@@ -87,6 +180,7 @@ class Animator(Qtw.QWidget):
         self.animationViewer.addFrameButton.clicked.connect(self.notSaved)
 
         self.saveAnimation_signal.connect(self.saveAnimation)
+        self.playAnimation_signal.connect(self.playAnimation)
         self.SaveShortcut = Qtw.QShortcut(QKeySequence("Ctrl+S"), self)
         self.SaveShortcut.activated.connect(self.saveAnimation)
 
@@ -108,36 +202,38 @@ class Animator(Qtw.QWidget):
         if self.currentSelectedFrame != None:
             self.currentSelectedFrame.setIllustration(self.getCurrentCubePixmap()) #Update illustration of the leaved frame
         
-        newFrame = self.animationViewer.timeLine.selectedItems()[0] 
-        newFrameData = newFrame.getFrameData()
-        newSize = newFrameData.getSize()
+        if len(self.animationViewer.timeLine.selectedItems()) > 0:
 
-        if self.currentSelectedFrame != None:
-            if self.currentSelectedFrame.getFrameData().getSize() == newSize: #Verify size compatibility
-                self.newColorLED_signal.disconnect(self.currentSelectedFrame.getFrameData().setColorLED) #Disconnect old frame
-                self.eraseColorLED_signal.disconnect(self.currentSelectedFrame.getFrameData().eraseColorLED)
+            newFrame = self.animationViewer.timeLine.selectedItems()[0] 
+            newFrameData = newFrame.getFrameData()
+            newSize = newFrameData.getSize()
+
+            if self.currentSelectedFrame != None:
+                if self.currentSelectedFrame.getFrameData().getSize() == newSize: #Verify size compatibility
+                    self.newColorLED_signal.disconnect(self.currentSelectedFrame.getFrameData().setColorLED) #Disconnect old frame
+                    self.eraseColorLED_signal.disconnect(self.currentSelectedFrame.getFrameData().eraseColorLED)
+                    for x in range(newSize.getSize(Axis.X)):
+                        for y in range(newSize.getSize(Axis.Y)):
+                            for z in range(newSize.getSize(Axis.Z)):
+                                newColor = newFrameData.getColorLED(x,y,z)
+                                if self.cubeViewer.getDisplayedColor(x,y,z) != newColor:  #Great gain in refresh speed if the frames are similare
+                                    self.newColorLED_signal.emit(x,y,z, newColor)
+
+                    self.currentSelectedFrame = newFrame
+                    self.newColorLED_signal.connect(self.currentSelectedFrame.getFrameData().setColorLED) #Connect new frame
+                    self.eraseColorLED_signal.connect(self.currentSelectedFrame.getFrameData().eraseColorLED)
+                else:
+                    print("Cube size incompatibility")
+            else:
                 for x in range(newSize.getSize(Axis.X)):
                     for y in range(newSize.getSize(Axis.Y)):
                         for z in range(newSize.getSize(Axis.Z)):
                             newColor = newFrameData.getColorLED(x,y,z)
                             if self.cubeViewer.getDisplayedColor(x,y,z) != newColor:  #Great gain in refresh speed if the frames are similare
                                 self.newColorLED_signal.emit(x,y,z, newColor)
-
                 self.currentSelectedFrame = newFrame
                 self.newColorLED_signal.connect(self.currentSelectedFrame.getFrameData().setColorLED) #Connect new frame
                 self.eraseColorLED_signal.connect(self.currentSelectedFrame.getFrameData().eraseColorLED)
-            else:
-                print("Cube size incompatibility")
-        else:
-            for x in range(newSize.getSize(Axis.X)):
-                for y in range(newSize.getSize(Axis.Y)):
-                    for z in range(newSize.getSize(Axis.Z)):
-                        newColor = newFrameData.getColorLED(x,y,z)
-                        if self.cubeViewer.getDisplayedColor(x,y,z) != newColor:  #Great gain in refresh speed if the frames are similare
-                            self.newColorLED_signal.emit(x,y,z, newColor)
-            self.currentSelectedFrame = newFrame
-            self.newColorLED_signal.connect(self.currentSelectedFrame.getFrameData().setColorLED) #Connect new frame
-            self.eraseColorLED_signal.connect(self.currentSelectedFrame.getFrameData().eraseColorLED)
 
     
     def addFrame(self) -> CubeLEDFrame:
@@ -174,6 +270,7 @@ class Animator(Qtw.QWidget):
         return self.animationSaved
     
     def createAnimation(self, cubeSize : CubeSize, name:str):
+        self.animationViewer.clearAllFrames()
         self.animationName = name
         self.changeCubeSize(cubeSize)
         self.noAnimationEdited = False
@@ -183,14 +280,15 @@ class Animator(Qtw.QWidget):
         return self.noAnimationEdited
     
     def loadAnimation(self, fileLocation : str):
+        self.animationViewer.clearAllFrames()
         file = open(fileLocation,'r')
         for line in file:
             if line[0] == '#':
                 self.loadFrame(line[:-1])
         file.close()
+        self.noAnimationEdited = False
     
     def loadFrame(self, dataLine:str):
-        self.noAnimationEdited = False
         self.addFrame()
         self.currentSelectedFrame.decodeData(dataLine)
         for x in range(self.cubeSize.getSize(Axis.X)):
@@ -201,10 +299,15 @@ class Animator(Qtw.QWidget):
                         self.newColorLED_signal.emit(x,y,z, newColor)
         self.currentSelectedFrame.setIllustration(self.getCurrentCubePixmap())
     
+    def resizeEvent(self,e):
+        self.alphaWidget.moveButton(self.cubeViewer.pos().x() + self.cubeViewer.size().width(), self.cubeViewer.pos().y())
+        super(Animator, self).resizeEvent(e)
+    
     def setBackgroundColor(self, color:QColor):
         self.cubeViewer.setBackgroundColor(color)
-        self.setStyleSheet("background-color: {}".format(color.name()))
 
+    def playAnimation(self):
+        self.alphaWidget.dimOut(True)
 
 
 class StartingMenuBackground(Qtw.QWidget):
@@ -256,7 +359,7 @@ class HueEditor(Qtw.QWidget):
 
         ## Update test
         self.anim_signal.connect(self.cubeViewerUpdate)
-        timer = TimerThread(self.anim_signal, int(1000/30))
+        timer = TimerThread(self.anim_signal, int(1000/1))
         timer.start()
         self.i=0
 
@@ -310,16 +413,16 @@ class MainMenu(Qtw.QWidget):
         layout = Qtw.QVBoxLayout(self)
         layout.addWidget(Qtw.QLineEdit(self))
 
-        self.animatorButton = WindowSelectionButton('Animation', self.newWindow_signal, MainWindow.ANIMATOR, self)
+        self.animatorButton = WindowSelectionButton('Animation', self.newWindow_signal, MainWidget.ANIMATOR, self)
         layout.addWidget(self.animatorButton)
 
-        self.startButton = WindowSelectionButton('Start', self.newWindow_signal, MainWindow.STARTER, self)
+        self.startButton = WindowSelectionButton('Start', self.newWindow_signal, MainWidget.STARTER, self)
         layout.addWidget(self.startButton)
 
-        self.equationButton = WindowSelectionButton('Equation mode', self.newWindow_signal, MainWindow.EQUATION_INTERPRETER, self)
+        self.equationButton = WindowSelectionButton('Equation mode', self.newWindow_signal, MainWidget.EQUATION_INTERPRETER, self)
         layout.addWidget(self.equationButton)
 
-        self.hueEditorButton = WindowSelectionButton('HUE mode', self.newWindow_signal, MainWindow.HUE_EDITOR, self)
+        self.hueEditorButton = WindowSelectionButton('HUE mode', self.newWindow_signal, MainWidget.HUE_EDITOR, self)
         layout.addWidget(self.hueEditorButton)
 
 
@@ -352,7 +455,7 @@ class WindowSelectionButton(Qtw.QPushButton):
         self.setStyleSheet(self.stylesheet)
 
 
-class MainWindow(Qtw.QWidget):
+class MainWidget(Qtw.QWidget):
     newWindow_signal = QtCore.pyqtSignal(int)
     waitingCursor_signal = QtCore.pyqtSignal(bool)
     STARTER, ANIMATOR, EQUATION_INTERPRETER, HUE_EDITOR = range(4)
@@ -362,7 +465,7 @@ class MainWindow(Qtw.QWidget):
         self.setWindowTitle("CubAnimate")
         self.cubeSize = CubeSize(8,8,8)
         self.mainApplication = mainApplication
-        self.setObjectName('Custom_Main_Window')
+        self.setObjectName('Custom_Main_Widget')
         self.backgroundColor = QColor(250,250,255)
 
         ## Windows instantiation
@@ -391,15 +494,15 @@ class MainWindow(Qtw.QWidget):
         self.newWindow_signal.connect(self.changeWindow)
         self.waitingCursor_signal.connect(self.setWaitingCursor)
 
-        ## MainWindow layout
+        ## MainWidget layout
         self.mainLayout=Qtw.QGridLayout(self)
         self.setLayout(self.mainLayout)
 
         self.mainLayout.addWidget(self.windowStack,0,1)      
         self.mainLayout.addWidget(Qtw.QPushButton('>', self, clicked=self.openMainMenu), 0, 0)
+        self.mainLayout.setContentsMargins(0,0,0,0)
+        self.mainLayout.setSpacing(0)
 
-        self.resize(self.screen().size()*0.8) #Do not delete if you want the window to maximized correctly...
-        self.changeBackgorundColor(self.backgroundColor)
         #self.waitingIcon = LoadingDialog(self)
         #self.waitingIcon.start()
         #self.waitingIcon.stop()
@@ -438,7 +541,8 @@ class MainWindow(Qtw.QWidget):
                     self.animator.loadAnimation(newAnimDialog.getFileLocation())
                 self.waitingCursor_signal.emit(False)
                 self.windowStack.setCurrentIndex(indexWindow)
-            
+            self.animator.resizeEvent(None) #update positions
+
         if indexWindow == self.EQUATION_INTERPRETER:            ## EQUATION WINDOW
             self.windowStack.setCurrentIndex(indexWindow)
         
@@ -448,6 +552,28 @@ class MainWindow(Qtw.QWidget):
         self.drawerMenu.animationOut()
     
     def changeBackgorundColor(self, color:QColor):
-        self.setStyleSheet("#Custom_Main_Window {background: %s;}"%(self.backgroundColor.name()))
-        self.startBackground.setBackgroundColor(self.backgroundColor)
-        self.animator.setBackgroundColor(self.backgroundColor)
+        self.setStyleSheet("#Custom_Main_Widget {background: %s;}"%(color.name()))
+        self.startBackground.setBackgroundColor(color)
+        self.animator.setBackgroundColor(color)
+        self.hueEditor.setBackgroundColor(color)
+        self.backgroundColor = color
+
+
+class MainWindow(Qtw.QMainWindow):
+    def __init__(self, mainApplication : Qtw.QApplication, *args, **kwargs):
+        super(MainWindow, self).__init__(*args, **kwargs)
+        self.setWindowTitle("CubAnimate")
+        self.setObjectName('Custom_Main_Window')
+        self.mainWidget = MainWidget(mainApplication)
+        self.setCentralWidget(self.mainWidget)
+
+        self.backgroundColor = QColor(250,250,255)
+        self.changeBackgroundColor(self.backgroundColor)
+        self.centralWidget().layout().setContentsMargins(0,0,0,0)
+        self.centralWidget().setContentsMargins(0,0,0,0)
+
+    def changeBackgroundColor(self, color : QColor):
+        self.setStyleSheet("#Custom_Main_Window {background:%s;}"%(color.name()))
+        self.mainWidget.changeBackgorundColor(color)
+
+    

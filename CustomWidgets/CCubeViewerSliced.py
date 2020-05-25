@@ -287,12 +287,6 @@ class CCubeViewerSliced(Qtw.QWidget):
         self.setObjectName('Custom_CubeSliced_Window')
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
         self.setStyleSheet(stylesheet)
-        
-        effect = Qtw.QGraphicsDropShadowEffect(self)
-        effect.setBlurRadius(10)
-        effect.setOffset(0, 0)
-        effect.setColor(QtCore.Qt.gray)
-        self.setGraphicsEffect(effect)
 
         layout = Qtw.QVBoxLayout(self)
         self.colorView = Qtw.QWidget(self)
