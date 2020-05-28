@@ -55,7 +55,7 @@ class DropArea(QPushButton):
         layout = QGridLayout(self)
         self.setLayout(layout)
         
-        self.svgWidget = QSvgWidget('drop.svg')
+        self.svgWidget = QSvgWidget(':/icons/DropZone.svg')
         self.svgWidget.setFixedSize(200,200)
         layout.addWidget(self.svgWidget)
         

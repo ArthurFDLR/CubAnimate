@@ -15,7 +15,9 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QMainWindow, QPushBut
 from PyQt5.QtDataVisualization import Q3DSurface, QSurface3DSeries, QSurfaceDataItem, QSurfaceDataProxy, QValue3DAxis
 
 from numpy import *
-from Equation import *
+
+from CustomWidgets.EquationInterpreter import *
+
  
 # Imports homemade modules #
 try:
@@ -29,7 +31,7 @@ except:
    Already implemented constants : pi, e, Inf, NaN
    Already implemented operators : +, -, *, /, ^, **, &, |, </>, &|, |&, ==, =, ~, !~, <>, ><, <=, >=, <~, >~, ~<, ~>, !'''
 
-from Equation.util import addFn, addConst, addOp
+from CustomWidgets.EquationInterpreter.util import addFn
 
 addFn('exp',"exp({0:s})","\\exp\\left({0:s}\\right)",1,exp)
 addFn('ln',"ln({0:s})","\\ln\\left({0:s}\\right)",1,log)
@@ -128,6 +130,7 @@ class EIWindow(Qtw.QWidget):
     
     @pyqtSlot()
     def on_click(self):
+        f = Expression(self.textbox.text(),["x","y","t"])
         try: 
         # Displays the function as LaTeX  #
             f = Expression(self.textbox.text(),["x","y","t"])

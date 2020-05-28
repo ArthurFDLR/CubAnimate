@@ -14,6 +14,8 @@ from CustomWidgets.CGradientDesigner import GradientDesigner
 #from CustomWidgets.CWaitingSpinnerWidget import QtWaitingSpinner
 
 
+#import resources
+
 class DimmingLayerWidget(Qtw.QWidget):
     stylesheetOpacity = """
     #CD_alphaWidget {
@@ -115,8 +117,8 @@ class Animator(Qtw.QWidget):
     playAnimation_signal = QtCore.pyqtSignal()
 
     stylesheet = """
-    QSplitter::handle {
-        image: url(drop.svg);
+    QSplitter::handle:horizontal {
+        image: url(:/icons/SplitterHandle.svg);
     }
     """
 
