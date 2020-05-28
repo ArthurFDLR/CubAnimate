@@ -1,7 +1,8 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
-    <qresource prefix="icons">
-        <file alias="SplitterHandle.svg">images/SplitterHandle.svg</file>
-        <file alias="DropZone.svg">images/DropFileZone.svg</file>
+    <qresource prefix="UI">
+        <file alias="SplitterHandleHorizontal.svg">images/SplitterHandleHorizontal.svg</file>
+        <file alias="SplitterHandleVertical.svg">images/SplitterHandleVertical.svg</file>
+        <file alias="DropFileZone.svg">images/DropFileZone.svg</file>
     </qresource>
 </RCC>

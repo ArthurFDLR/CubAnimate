@@ -117,8 +117,13 @@ class Animator(Qtw.QWidget):
     playAnimation_signal = QtCore.pyqtSignal()
 
     stylesheet = """
+    QSplitter::handle:vertical {
+        image: url(:/UI/SplitterHandleHorizontal.svg);
+        margin-top: 0px;
+        margin-bottom: 0px;
+    }
     QSplitter::handle:horizontal {
-        image: url(:/icons/SplitterHandle.svg);
+        image: url(:/UI/SplitterHandleVertical.svg);
     }
     """
 
@@ -148,6 +153,9 @@ class Animator(Qtw.QWidget):
         self.setContentsMargins(0,0,0,0)
         self.horizontlSpliter = Qtw.QSplitter(QtCore.Qt.Horizontal)
         self.verticalSpliter = Qtw.QSplitter(QtCore.Qt.Vertical)
+
+        self.horizontlSpliter.setHandleWidth(6)
+        self.verticalSpliter.setHandleWidth(6)
 
         self.horizontlSpliter.addWidget(self.toolBox)
         self.horizontlSpliter.addWidget(self.cubeViewer)
@@ -346,11 +354,25 @@ class TimerThread(QtCore.QThread):
         self.dataCollectionTimer.start(self.timeout)
         loop = QtCore.QEventLoop()
         loop.exec_()
+    
 
 class HueEditor(Qtw.QWidget):
     
     saveHUE_signal = QtCore.pyqtSignal()
     anim_signal = QtCore.pyqtSignal()
+
+    stylesheet = """
+    #HUE_Editor_Window {
+        background-color: %(bgColor)s;
+    }
+    QSplitter::handle:vertical {
+        image: url(:/UI/SplitterHandleHorizontal.svg);
+        margin-bottom: 10px;
+    }
+    QSplitter::handle:horizontal {
+        image: url(:/UI/SplitterHandleVertical.svg);
+    }
+    """
 
     def __init__(self, cubeSizeInit:CubeSize, parent):
         super(Qtw.QWidget, self).__init__(parent)
@@ -358,11 +380,14 @@ class HueEditor(Qtw.QWidget):
         self.cubeSize = cubeSizeInit
         self.mainLayout=Qtw.QHBoxLayout(self)
         self.setLayout(self.mainLayout)
+        self.setObjectName('HUE_Editor_Window')
+        self.setStyleSheet(self.stylesheet % {'bgColor': QColor(255,255,255).name()})
+        self.animationOn = False
 
         ## Update test
         self.anim_signal.connect(self.cubeViewerUpdate)
-        timer = TimerThread(self.anim_signal, int(1000/1))
-        timer.start()
+        self.timer = TimerThread(self.anim_signal, int(1000/24))
+        self.timer.start()
         self.i=0
 
         ## Widget instantiation
@@ -373,7 +398,9 @@ class HueEditor(Qtw.QWidget):
         ## Window layout
         self.horizontlSpliter = Qtw.QSplitter(QtCore.Qt.Horizontal)
         self.verticalSpliter = Qtw.QSplitter(QtCore.Qt.Vertical)
-
+        self.horizontlSpliter.setHandleWidth(6)
+        self.verticalSpliter.setHandleWidth(6)
+        
         self.horizontlSpliter.addWidget(self.toolBox)
         self.horizontlSpliter.addWidget(self.cubeViewer)
         self.horizontlSpliter.setStretchFactor(0,0)
@@ -389,19 +416,24 @@ class HueEditor(Qtw.QWidget):
         self.saveHUE_signal.connect(lambda: print('Save HUE'))
     
     def setBackgroundColor(self, color:QColor):
-        self.setStyleSheet("background-color: {}".format(color.name()))
+        self.setStyleSheet(self.stylesheet % {'bgColor': color.name()})
     
     def cubeViewerUpdate(self):
-        self.i += 1
-        if self.i > 100:
-            self.i = 0
-        for x in range(self.cubeSize.getSize(Axis.X)):
-            for y in range(self.cubeSize.getSize(Axis.Y)):
-                for z in range(self.cubeSize.getSize(Axis.Z)):
-                    self.cubeViewer.modifier.changeColor(x,y,z, self.gradientViewer.getColorAt(self.i/100) )
+        if self.animationOn :
+            self.i += 1
+            if self.i > 100:
+                self.i = 0
+            for x in range(self.cubeSize.getSize(Axis.X)):
+                for y in range(self.cubeSize.getSize(Axis.Y)):
+                    for z in range(self.cubeSize.getSize(Axis.Z)):
+                        self.cubeViewer.modifier.changeColor(x,y,z, self.gradientViewer.getColorAt(self.i/100))
     
     def getCurrentColor(self):
         return QColor(250,250,250)
+    
+    def activeAnimation(self, active:bool):
+        self.animationOn = active
+
 
 
 class MainMenu(Qtw.QWidget):
@@ -413,13 +445,12 @@ class MainMenu(Qtw.QWidget):
         self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
         self.setStyleSheet('MainMenu{background:white;}')
         layout = Qtw.QVBoxLayout(self)
-        layout.addWidget(Qtw.QLineEdit(self))
-
-        self.animatorButton = WindowSelectionButton('Animation', self.newWindow_signal, MainWidget.ANIMATOR, self)
-        layout.addWidget(self.animatorButton)
 
         self.startButton = WindowSelectionButton('Start', self.newWindow_signal, MainWidget.STARTER, self)
         layout.addWidget(self.startButton)
+
+        self.animatorButton = WindowSelectionButton('Animation', self.newWindow_signal, MainWidget.ANIMATOR, self)
+        layout.addWidget(self.animatorButton)
 
         self.equationButton = WindowSelectionButton('Equation mode', self.newWindow_signal, MainWidget.EQUATION_INTERPRETER, self)
         layout.addWidget(self.equationButton)
@@ -455,6 +486,54 @@ class WindowSelectionButton(Qtw.QPushButton):
         self.setSizePolicy(Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Preferred)
         self.setObjectName('Custom_Window_Button')
         self.setStyleSheet(self.stylesheet)
+
+
+class OpenMenuButton(Qtw.QPushButton):
+    def __init__(self, width:int, onClick, bgColor: QColor, parent=None):
+        super().__init__(parent, clicked=onClick)
+
+        self.setMinimumSize(60, 60)
+
+        self.setSizePolicy(Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Expanding)
+        self.setFixedWidth(width)
+
+        self.bgColor = bgColor
+        self.menuColor = QColor(255, 255, 255)
+        self.shadowColor = QColor(155, 155, 155)
+        self.shadowSize = 0.7
+
+        self._animation = QtCore.QVariantAnimation(
+            self,
+            valueChanged=self._animate,
+            startValue=0.001,
+            endValue=min(0.25, 1.0 - self.shadowSize),
+            duration=500
+        )
+        self._animation.setEasingCurve(QtCore.QEasingCurve.OutElastic)
+
+    def _animate(self, value):
+        qss = """
+            font: 75 14pt "Microsoft YaHei UI";
+            font-weight: bold;
+            text-align: left;
+            color: rgb(255, 255, 255);
+            border: 0px solid rgb(255, 255, 255);
+        """
+        grad = "background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 {menuColor}, stop:{value1} {menuColor}, stop:{value2} {shadowColor}, stop: {value3} {bgColor}, stop: 1.0 {bgColor});".format(
+            bgColor=self.bgColor.name(), menuColor=self.menuColor.name(), shadowColor=self.shadowColor.name(), value1=value-0.0001, value2=value, value3=value+self.shadowSize
+        )
+        qss += grad
+        self.setStyleSheet(qss)
+
+    def enterEvent(self, event):
+        self._animation.setDirection(QtCore.QAbstractAnimation.Forward)
+        self._animation.start()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._animation.setDirection(QtCore.QAbstractAnimation.Backward)
+        self._animation.start()
+        super().enterEvent(event)
 
 
 class MainWidget(Qtw.QWidget):
@@ -501,7 +580,7 @@ class MainWidget(Qtw.QWidget):
         self.setLayout(self.mainLayout)
 
         self.mainLayout.addWidget(self.windowStack,0,1)      
-        self.mainLayout.addWidget(Qtw.QPushButton('>', self, clicked=self.openMainMenu), 0, 0)
+        self.mainLayout.addWidget(OpenMenuButton(max(30,self.screen().size().width()*0.03), self.openMainMenu, self.backgroundColor), 0, 0)
         self.mainLayout.setContentsMargins(0,0,0,0)
         self.mainLayout.setSpacing(0)
 
@@ -523,13 +602,19 @@ class MainWidget(Qtw.QWidget):
     def openMainMenu(self):
         self.drawerMenu.show()
     
-    def changeWindow(self, indexWindow):
-        if indexWindow == self.STARTER:                         ## STARTING WINDOW
-            self.windowStack.setCurrentIndex(indexWindow)
+    def changeWindow(self, newIndexWindow):
+        oldIndexWindow = self.windowStack.currentIndex()
 
-        if indexWindow == self.ANIMATOR:                        ## ANIMATION WINDOW
+        if oldIndexWindow == self.HUE_EDITOR:                      ## HUE WINDOW OUT
+            self.hueEditor.activeAnimation(False)
+
+
+        if newIndexWindow == self.STARTER:                         ## STARTING WINDOW IN
+            self.windowStack.setCurrentIndex(newIndexWindow)
+
+        if newIndexWindow == self.ANIMATOR:                        ## ANIMATION WINDOW IN
             if not self.animator.isEmpty():
-                self.windowStack.setCurrentIndex(indexWindow)
+                self.windowStack.setCurrentIndex(newIndexWindow)
     
             newAnimDialog = NewAnimationDialog(self)
             if newAnimDialog.exec_(): #If pop-up not exited
@@ -542,14 +627,15 @@ class MainWidget(Qtw.QWidget):
                     self.animator.changeCubeSize(self.cubeSize)
                     self.animator.loadAnimation(newAnimDialog.getFileLocation())
                 self.waitingCursor_signal.emit(False)
-                self.windowStack.setCurrentIndex(indexWindow)
+                self.windowStack.setCurrentIndex(newIndexWindow)
             self.animator.resizeEvent(None) #update positions
 
-        if indexWindow == self.EQUATION_INTERPRETER:            ## EQUATION WINDOW
-            self.windowStack.setCurrentIndex(indexWindow)
+        if newIndexWindow == self.EQUATION_INTERPRETER:            ## EQUATION WINDOW IN
+            self.windowStack.setCurrentIndex(newIndexWindow)
         
-        if indexWindow == self.HUE_EDITOR:                      ## HUE WINDOW
-            self.windowStack.setCurrentIndex(indexWindow)
+        if newIndexWindow == self.HUE_EDITOR:                      ## HUE WINDOW IN
+            self.hueEditor.activeAnimation(True)
+            self.windowStack.setCurrentIndex(newIndexWindow)
 
         self.drawerMenu.animationOut()
     

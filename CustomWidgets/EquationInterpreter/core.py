@@ -784,7 +784,6 @@ gematch = re.compile('\s*(\))')
 
 
 def recalculateFMatch():
-    print('HEYYYY')
     global fmatch, omatch, umatch
     fks = sorted(functions.keys(), key=len, reverse=True)
     oks = sorted(ops.keys(), key=len, reverse=True)
