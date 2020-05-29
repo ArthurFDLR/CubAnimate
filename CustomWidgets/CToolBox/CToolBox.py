@@ -153,13 +153,53 @@ QScrollBar::handle:vertical {
 }
 """
 
+'''
+class ColorPickerWidget(QWidget):
+    def __init__(self, alphaSelection : bool, movableWindow : bool, *args, **kwargs):
+        super(ColorPickerWidget, self).__init__(*args, **kwargs)
 
-class CToolBox(QWidget):
+                self.colorPanel = CColorPanel(self.colorView)
+        layout.addWidget(self.colorPanel)
+
+        self.controlWidget = QWidget(self.colorView)
+        layout.addWidget(self.controlWidget)
+        clayout = QHBoxLayout(self.controlWidget)
+
+        self.colorStraw = CColorStraw(self.colorView)
+        clayout.addWidget(self.colorStraw)
+
+        self.colorControl = CColorControl(self.colorView)
+        clayout.addWidget(self.colorControl)
+
+        self.sliderWidget = QWidget(self.colorView)
+        clayout.addWidget(self.sliderWidget)
+        slayout = QVBoxLayout(self.sliderWidget)
+        slayout.setContentsMargins(0, 0, 0, 0)
+
+        self.rainbowSlider = CColorSlider(
+            CColorSlider.TypeRainbow, self.colorView)
+        slayout.addWidget(self.rainbowSlider)
+        if self.alphaON:
+            self.alphaSlider = CColorSlider(CColorSlider.TypeAlpha, self.colorView)
+            slayout.addWidget(self.alphaSlider)
+
+        self.colorInfos = CColorInfos(self.alphaON, CToolBox_Animator.selectedColor,self.colorView)
+        layout.addWidget(self.colorInfos)
+
+        ## Color palette
+        layout.addWidget(QWidget(self.colorView, objectName='splitLine'))
+
+        self.colorPalettes = CColorPalettes(self.colorView)
+        layout.addWidget(self.colorPalettes)
+
+'''
+
+class CToolBox_Animator(QWidget):
 
     selectedColor = QColor(255,0,0)
 
     def __init__(self, alphaSelection : bool, movableWindow : bool, saveAnimation_signal:pyqtSignal, playAnimation_signal:pyqtSignal, *args, **kwargs):
-        super(CToolBox, self).__init__(*args, **kwargs)
+        super(CToolBox_Animator, self).__init__(*args, **kwargs)
 
         self.alphaON = alphaSelection
         self.movableON = movableWindow
@@ -239,7 +279,7 @@ class CToolBox(QWidget):
             self.alphaSlider = CColorSlider(CColorSlider.TypeAlpha, self.colorView)
             slayout.addWidget(self.alphaSlider)
 
-        self.colorInfos = CColorInfos(self.alphaON, CToolBox.selectedColor,self.colorView)
+        self.colorInfos = CColorInfos(self.alphaON, CToolBox_Animator.selectedColor,self.colorView)
         layout.addWidget(self.colorInfos)
 
         ## Color palette
@@ -298,7 +338,159 @@ class CToolBox(QWidget):
         event.accept()
 
     def getColor(self) -> QColor:
-        return CToolBox.selectedColor
+        return CToolBox_Animator.selectedColor
+    
+    def getFPS(self) -> int:
+        return self.animationFPS
+    
+    def changeFPS(self, value):
+        self.animationFPS = value
+        self.labelValue.setText(str(self.animationFPS))
+        self.sliderFPS.setValue(self.animationFPS)
+
+
+class CToolBox_HUE(QWidget):
+
+    selectedColor = QColor(255,0,0)
+
+    def __init__(self, alphaSelection : bool, movableWindow : bool, saveAnimation_signal:pyqtSignal, *args, **kwargs):
+        super(CToolBox_HUE, self).__init__(*args, **kwargs)
+
+        self.alphaON = alphaSelection
+        self.movableON = movableWindow
+
+        self.saveAnimation_signal = saveAnimation_signal
+
+        self.loopDuration = 3000 #ms
+
+        self.setObjectName('Custom_Color_Dialog')
+        #self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.setStyleSheet(Stylesheet)
+        self.mPos = None
+        self.initUi()
+        self.initSignals()
+        # 添加阴影
+        
+        effect = QGraphicsDropShadowEffect(self)
+        effect.setBlurRadius(10)
+        effect.setOffset(0, 0)
+        effect.setColor(Qt.gray)
+        self.setGraphicsEffect(effect)
+        
+
+    def initUi(self):
+        layout = QVBoxLayout(self)
+        self.colorView = QWidget(self)
+        self.colorView.setObjectName('Custom_Color_View')
+        layout.addWidget(self.colorView)
+
+        layout = QVBoxLayout(self.colorView)
+        layout.setContentsMargins(1, 1, 1, 1)
+
+        ## Upper part
+        self.upperWidget = QWidget(self.colorView)
+        layout.addWidget(self.upperWidget)
+        self.upperLayout = QGridLayout(self.upperWidget)
+
+        self.labelName = QLabel('Cycle duration', self)
+        self.labelValue = QLabel('{}'.format(int(self.loopDuration/1000)), self)
+        self.sliderFPS = QSlider(Qt.Horizontal, valueChanged=lambda v: self.labelValue.setText(str(v)))
+        self.sliderFPS.setValue(int(self.loopDuration/1000))
+
+        self.upperLayout.addWidget(self.sliderFPS,0,1)
+        self.upperLayout.addWidget(self.labelValue,0,2)
+        self.upperLayout.addWidget(self.labelName,0,0)
+
+        self.saveButton = QPushButton("Save", self, cursor=Qt.PointingHandCursor, toolTip='Export animation',clicked= lambda :self.saveAnimation_signal.emit())
+        self.upperLayout.addWidget(self.saveButton,2,0)
+        layout.addWidget(QWidget(self.colorView, objectName='splitLine'))
+
+        ## Color selection
+        self.colorPanel = CColorPanel(self.colorView)
+        layout.addWidget(self.colorPanel)
+
+        self.controlWidget = QWidget(self.colorView)
+        layout.addWidget(self.controlWidget)
+        clayout = QHBoxLayout(self.controlWidget)
+
+        self.colorStraw = CColorStraw(self.colorView)
+        clayout.addWidget(self.colorStraw)
+
+        self.colorControl = CColorControl(self.colorView)
+        clayout.addWidget(self.colorControl)
+
+        self.sliderWidget = QWidget(self.colorView)
+        clayout.addWidget(self.sliderWidget)
+        slayout = QVBoxLayout(self.sliderWidget)
+        slayout.setContentsMargins(0, 0, 0, 0)
+
+        self.rainbowSlider = CColorSlider(
+            CColorSlider.TypeRainbow, self.colorView)
+        slayout.addWidget(self.rainbowSlider)
+        if self.alphaON:
+            self.alphaSlider = CColorSlider(CColorSlider.TypeAlpha, self.colorView)
+            slayout.addWidget(self.alphaSlider)
+
+        self.colorInfos = CColorInfos(self.alphaON, CToolBox_HUE.selectedColor,self.colorView)
+        layout.addWidget(self.colorInfos)
+
+        ## Color palette
+        layout.addWidget(QWidget(self.colorView, objectName='splitLine'))
+
+        self.colorPalettes = CColorPalettes(self.colorView)
+        layout.addWidget(self.colorPalettes)
+
+    def initSignals(self):
+        # 彩虹slider->面板->rgb文字->小圆
+        self.rainbowSlider.colorChanged.connect(self.colorPanel.createImage)
+        self.colorPanel.colorChanged.connect(self.colorInfos.updateColor)
+        self.colorInfos.colorChanged.connect(self.colorControl.updateColor)
+
+        # 透明slider->alpha文字->小圆
+        if self.alphaON:
+            self.alphaSlider.colorChanged.connect(self.colorInfos.updateAlpha)
+
+        # alpha文字->透明slider
+#         self.colorInfos.colorChanged.connect(self.alphaSlider.updateAlpha)
+
+        # 底部多颜色卡
+        self.colorPalettes.colorChanged.connect(self.colorInfos.updateColor)
+        #self.colorPalettes.colorChanged.connect(self.colorPanel.createImage)
+        self.colorInfos.colorAdded.connect(self.colorPalettes.addColor)
+
+        # 取色器
+        self.colorStraw.colorChanged.connect(self.colorInfos.updateColor)
+
+        # 颜色结果
+        self.colorInfos.colorChanged.connect(self.setColor)
+
+    def setColor(self, color, alpha):
+        color = color
+        color.setAlpha(alpha)
+        CToolBox_HUE.selectedColor = color
+
+    def mousePressEvent(self, event):
+        """鼠标点击事件"""
+        if self.movableON:
+            if event.button() == Qt.LeftButton:
+                self.mPos = event.pos()
+        event.accept()
+
+    def mouseReleaseEvent(self, event):
+        '''鼠标弹起事件'''
+        if self.movableON:
+            self.mPos = None
+        event.accept()
+
+    def mouseMoveEvent(self, event):
+        if self.movableON:
+            if event.buttons() == Qt.LeftButton and self.mPos:
+                if not self.colorPanel.geometry().contains(self.mPos):
+                    self.move(self.mapToGlobal(event.pos() - self.mPos))
+        event.accept()
+
+    def getColor(self) -> QColor:
+        return CToolBox_HUE.selectedColor
     
     def getFPS(self) -> int:
         return self.animationFPS

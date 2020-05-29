@@ -3,7 +3,7 @@ from PyQt5 import QtCore
 from PyQt5.QtGui import QColor, QFont, QVector3D, QPixmap, QIcon, QKeySequence
 
 from CustomWidgets.CubeViewer3D import CubeViewer3DInteract
-from CustomWidgets.CToolBox.CToolBox import CToolBox
+from CustomWidgets.CToolBox.CToolBox import CToolBox_Animator, CToolBox_HUE
 from CustomWidgets.CDrawer import CDrawer
 from CustomWidgets.CTypes import Axis, CubeSize, CubeLEDFrame_DATA
 from CustomWidgets.CCubeViewerSliced import CCubeViewerSliced
@@ -144,7 +144,7 @@ class Animator(Qtw.QWidget):
         self.setStyleSheet(self.stylesheet)
 
         ## Widget instantiation
-        self.toolBox = CToolBox(False, False, self.saveAnimation_signal, self.playAnimation_signal, self)
+        self.toolBox = CToolBox_Animator(False, False, self.saveAnimation_signal, self.playAnimation_signal, self)
         self.cubeViewer = CubeViewer3DInteract(True, self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
         self.cubeSliced = CCubeViewerSliced(self.cubeSize, self.newColorLED_signal, self.eraseColorLED_signal, self)
         self.animationViewer = AnimationList(self.cubeSize, self.animatorWidth)
@@ -391,7 +391,7 @@ class HueEditor(Qtw.QWidget):
         self.i=0
 
         ## Widget instantiation
-        self.toolBox = CToolBox(False, False, self.saveHUE_signal, self)
+        self.toolBox = CToolBox_HUE(False, False, self.saveHUE_signal, self)
         self.cubeViewer = CubeViewer3DInteract(False, self.cubeSize, None, None, self)
         self.gradientViewer = GradientDesigner()
 
@@ -499,7 +499,7 @@ class OpenMenuButton(Qtw.QPushButton):
 
         self.bgColor = bgColor
         self.menuColor = QColor(255, 255, 255)
-        self.shadowColor = QColor(155, 155, 155)
+        self.shadowColor = QColor(200, 200, 220)
         self.shadowSize = 0.7
 
         self._animation = QtCore.QVariantAnimation(
