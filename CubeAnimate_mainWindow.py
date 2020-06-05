@@ -13,7 +13,6 @@ from CustomWidgets.CEIWindow import EIWindow
 from CustomWidgets.CGradientDesigner import GradientDesigner
 #from CustomWidgets.CWaitingSpinnerWidget import QtWaitingSpinner
 
-
 #import resources
 
 class DimmingLayerWidget(Qtw.QWidget):
@@ -127,7 +126,7 @@ class Animator(Qtw.QWidget):
     }
     """
 
-    def __init__(self, parent, cubeSizeInit:CubeSize = CubeSize(8,8,8)):
+    def __init__(self, parent, openMenu_signal:QtCore.pyqtSignal, cubeSizeInit:CubeSize = CubeSize(8,8,8)):
         super(Qtw.QWidget, self).__init__(parent)
 
         ## Attributes & Parameters
@@ -194,6 +193,8 @@ class Animator(Qtw.QWidget):
         self.SaveShortcut = Qtw.QShortcut(QKeySequence("Ctrl+S"), self)
         self.SaveShortcut.activated.connect(self.saveAnimation)
 
+        self.openMenu_signal = openMenu_signal
+
     def notSaved(self, x=0, y=0, z=0, color = QColor(0,0,0)):
         self.animationSaved = False
     
@@ -209,11 +210,12 @@ class Animator(Qtw.QWidget):
     def changeCurrentFrame(self):
         """ Change the frame being edited."""
 
+        self.openMenu_signal.emit(True)
+
         if self.currentSelectedFrame != None:
             self.currentSelectedFrame.setIllustration(self.getCurrentCubePixmap()) #Update illustration of the leaved frame
         
         if len(self.animationViewer.timeLine.selectedItems()) > 0:
-
             newFrame = self.animationViewer.timeLine.selectedItems()[0] 
             newFrameData = newFrame.getFrameData()
             newSize = newFrameData.getSize()
@@ -226,7 +228,7 @@ class Animator(Qtw.QWidget):
                         for y in range(newSize.getSize(Axis.Y)):
                             for z in range(newSize.getSize(Axis.Z)):
                                 newColor = newFrameData.getColorLED(x,y,z)
-                                if self.cubeViewer.getDisplayedColor(x,y,z) != newColor:  #Great gain in refresh speed if the frames are similare
+                                if self.cubeViewer.getDisplayedColor(x,y,z).name() != newColor.name():  #Great gain in refresh speed if the frames are similare
                                     self.newColorLED_signal.emit(x,y,z, newColor)
 
                     self.currentSelectedFrame = newFrame
@@ -235,15 +237,19 @@ class Animator(Qtw.QWidget):
                 else:
                     print("Cube size incompatibility")
             else:
+                print('enter')
                 for x in range(newSize.getSize(Axis.X)):
                     for y in range(newSize.getSize(Axis.Y)):
                         for z in range(newSize.getSize(Axis.Z)):
                             newColor = newFrameData.getColorLED(x,y,z)
-                            if self.cubeViewer.getDisplayedColor(x,y,z) != newColor:  #Great gain in refresh speed if the frames are similare
+                            #print(newColor.name() + ' ' + self.cubeViewer.getDisplayedColor(x,y,z).name())
+                            if self.cubeViewer.getDisplayedColor(x,y,z).name() != newColor.name():  #Great gain in refresh speed if the frames are similare
                                 self.newColorLED_signal.emit(x,y,z, newColor)
                 self.currentSelectedFrame = newFrame
                 self.newColorLED_signal.connect(self.currentSelectedFrame.getFrameData().setColorLED) #Connect new frame
                 self.eraseColorLED_signal.connect(self.currentSelectedFrame.getFrameData().eraseColorLED)
+        
+        self.openMenu_signal.emit(False)
 
     
     def addFrame(self) -> CubeLEDFrame:
@@ -305,7 +311,7 @@ class Animator(Qtw.QWidget):
             for y in range(self.cubeSize.getSize(Axis.Y)):
                 for z in range(self.cubeSize.getSize(Axis.Z)):
                     newColor = self.currentSelectedFrame.getFrameData().getColorLED(x,y,z)
-                    if self.cubeViewer.getDisplayedColor(x,y,z) != newColor:  #Great gain in refresh speed if the frames are similare
+                    if self.cubeViewer.getDisplayedColor(x,y,z).name() != newColor.name():  #Great gain in refresh speed if the frames are similare, compare name to avoid alpha comparison
                         self.newColorLED_signal.emit(x,y,z, newColor)
         self.currentSelectedFrame.setIllustration(self.getCurrentCubePixmap())
     
@@ -446,16 +452,16 @@ class MainMenu(Qtw.QWidget):
         self.setStyleSheet('MainMenu{background:white;}')
         layout = Qtw.QVBoxLayout(self)
 
-        self.startButton = WindowSelectionButton('Start', self.newWindow_signal, MainWidget.STARTER, self)
-        layout.addWidget(self.startButton)
+        #self.startButton = WindowSelectionButton('Start', self.newWindow_signal, Editors_MainWidget.STARTER, self)
+        #layout.addWidget(self.startButton)
 
-        self.animatorButton = WindowSelectionButton('Animation', self.newWindow_signal, MainWidget.ANIMATOR, self)
+        self.animatorButton = WindowSelectionButton('Animation', self.newWindow_signal, EditorIndex.ANIMATOR, self)
         layout.addWidget(self.animatorButton)
 
-        self.equationButton = WindowSelectionButton('Equation mode', self.newWindow_signal, MainWidget.EQUATION_INTERPRETER, self)
+        self.equationButton = WindowSelectionButton('Equation mode', self.newWindow_signal, EditorIndex.EQUATION_INTERPRETER, self)
         layout.addWidget(self.equationButton)
 
-        self.hueEditorButton = WindowSelectionButton('HUE mode', self.newWindow_signal, MainWidget.HUE_EDITOR, self)
+        self.hueEditorButton = WindowSelectionButton('HUE mode', self.newWindow_signal, EditorIndex.HUE_EDITOR, self)
         layout.addWidget(self.hueEditorButton)
 
 
@@ -535,23 +541,35 @@ class OpenMenuButton(Qtw.QPushButton):
         self._animation.start()
         super().enterEvent(event)
 
+class EditorIndex():
+    ANIMATOR, EQUATION_INTERPRETER, HUE_EDITOR = range(3)
 
-class MainWidget(Qtw.QWidget):
+class StatusBar_Widget(Qtw.QWidget):
+    def __init__(self, openMenu_signal:QtCore.pyqtSignal):
+        super().__init__()
+        self.openMenu_signal = openMenu_signal
+        self.layout=Qtw.QHBoxLayout(self)
+        self.setLayout(self.layout)
+        self.layout.addWidget(Qtw.QPushButton('Menu', self, clicked=lambda:self.openMenu_signal.emit(), objectName='menuButton'))
+        self.layout.addWidget(Qtw.QLabel('ComPort cube'))
+
+
+class Editors_MainWidget(Qtw.QWidget):
     newWindow_signal = QtCore.pyqtSignal(int)
     waitingCursor_signal = QtCore.pyqtSignal(bool)
-    STARTER, ANIMATOR, EQUATION_INTERPRETER, HUE_EDITOR = range(4)
+    #ANIMATOR, EQUATION_INTERPRETER, HUE_EDITOR = range(3)
 
-    def __init__(self, mainApplication : Qtw.QApplication):
+    def __init__(self, openMenu_signal:QtCore.pyqtSignal, mainApplication : Qtw.QApplication):
         super().__init__()
-        self.setWindowTitle("CubAnimate")
         self.cubeSize = CubeSize(8,8,8)
         self.mainApplication = mainApplication
         self.setObjectName('Custom_Main_Widget')
         self.backgroundColor = QColor(250,250,255)
+        self.openMenu_signal = openMenu_signal
 
         ## Windows instantiation
-        self.animator = Animator(self, self.cubeSize)
-        self.startBackground = StartingMenuBackground(self)
+        self.animator = Animator(self, self.waitingCursor_signal, self.cubeSize)
+        #self.startBackground = StartingMenuBackground(self)
         self.equationInterpreter = EIWindow(self)
         self.hueEditor = HueEditor(self.cubeSize, self)
 
@@ -561,13 +579,14 @@ class MainWidget(Qtw.QWidget):
         self.drawerMenu.setWidget(self.mainMenu)
 
         ## Windows manager
+        '''
         self.windowList = Qtw.QListWidget()
         self.windowList.insertItem(self.STARTER, 'StarterBackground' )
         self.windowList.insertItem(self.ANIMATOR, 'Animator' )
         self.windowList.insertItem(self.EQUATION_INTERPRETER, 'EquationInterpreter')
         self.windowList.insertItem(self.HUE_EDITOR, 'HueEditor')
+        '''
         self.windowStack = Qtw.QStackedWidget(self)
-        self.windowStack.addWidget(self.startBackground)
         self.windowStack.addWidget(self.animator)
         self.windowStack.addWidget(self.equationInterpreter)
         self.windowStack.addWidget(self.hueEditor)
@@ -575,12 +594,15 @@ class MainWidget(Qtw.QWidget):
         self.newWindow_signal.connect(self.changeWindow)
         self.waitingCursor_signal.connect(self.setWaitingCursor)
 
+        self.statusBar = StatusBar_Widget(self.openMenu_signal)
+
         ## MainWidget layout
-        self.mainLayout=Qtw.QGridLayout(self)
+        self.mainLayout=Qtw.QVBoxLayout(self)
         self.setLayout(self.mainLayout)
 
-        self.mainLayout.addWidget(self.windowStack,0,1)      
-        self.mainLayout.addWidget(OpenMenuButton(max(30,self.screen().size().width()*0.03), self.openMainMenu, self.backgroundColor), 0, 0)
+        self.mainLayout.addWidget(self.statusBar)
+        self.mainLayout.addWidget(self.windowStack)      
+        #self.mainLayout.addWidget(OpenMenuButton(max(30,self.screen().size().width()*0.03), self.openMainMenu, self.backgroundColor), 0, 0)
         self.mainLayout.setContentsMargins(0,0,0,0)
         self.mainLayout.setSpacing(0)
 
@@ -593,11 +615,9 @@ class MainWidget(Qtw.QWidget):
         if activate:
             self.mainApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
             #self.waitingIcon.start()
-            print('On')
         else:
             self.mainApplication.restoreOverrideCursor()
             #self.waitingIcon.stop()
-            print('Off')
     
     def openMainMenu(self):
         self.drawerMenu.show()
@@ -605,14 +625,10 @@ class MainWidget(Qtw.QWidget):
     def changeWindow(self, newIndexWindow):
         oldIndexWindow = self.windowStack.currentIndex()
 
-        if oldIndexWindow == self.HUE_EDITOR:                      ## HUE WINDOW OUT
+        if oldIndexWindow == EditorIndex.HUE_EDITOR:                      ## HUE WINDOW OUT
             self.hueEditor.activeAnimation(False)
 
-
-        if newIndexWindow == self.STARTER:                         ## STARTING WINDOW IN
-            self.windowStack.setCurrentIndex(newIndexWindow)
-
-        if newIndexWindow == self.ANIMATOR:                        ## ANIMATION WINDOW IN
+        if newIndexWindow == EditorIndex.ANIMATOR:                        ## ANIMATION WINDOW IN
             if not self.animator.isEmpty():
                 self.windowStack.setCurrentIndex(newIndexWindow)
     
@@ -630,38 +646,75 @@ class MainWidget(Qtw.QWidget):
                 self.windowStack.setCurrentIndex(newIndexWindow)
             self.animator.resizeEvent(None) #update positions
 
-        if newIndexWindow == self.EQUATION_INTERPRETER:            ## EQUATION WINDOW IN
+        if newIndexWindow == EditorIndex.EQUATION_INTERPRETER:            ## EQUATION WINDOW IN
             self.windowStack.setCurrentIndex(newIndexWindow)
         
-        if newIndexWindow == self.HUE_EDITOR:                      ## HUE WINDOW IN
+        if newIndexWindow == EditorIndex.HUE_EDITOR:                      ## HUE WINDOW IN
             self.hueEditor.activeAnimation(True)
             self.windowStack.setCurrentIndex(newIndexWindow)
 
         self.drawerMenu.animationOut()
     
-    def changeBackgorundColor(self, color:QColor):
+    def changeBackgroundColor(self, color:QColor):
         self.setStyleSheet("#Custom_Main_Widget {background: %s;}"%(color.name()))
-        self.startBackground.setBackgroundColor(color)
+        #self.startBackground.setBackgroundColor(color)
         self.animator.setBackgroundColor(color)
         self.hueEditor.setBackgroundColor(color)
         self.backgroundColor = color
 
 
+class Menu_MainWidget(Qtw.QWidget):
+    def __init__(self, mainApplication : Qtw.QApplication, newWindow_signal:QtCore.pyqtSignal):
+        super().__init__()
+        self.mainApplication = mainApplication
+        self.setObjectName('Custom_Menu_Widget')
+        self.backgroundColor = QColor(250,250,255)
+        self.newWindow_signal = newWindow_signal
+
+        self.mainLayout=Qtw.QGridLayout(self)
+        self.setLayout(self.mainLayout)
+        #self.mainLayout.addWidget(Qtw.QPushButton('Animator', self, clicked=lambda:print('Anim'), objectName='AnimationButton'),0,0)
+        #self.mainLayout.addWidget(Qtw.QPushButton('HUE', self, clicked=lambda:print('HUE'), objectName='HUEButton'),0,1)
+        #self.mainLayout.addWidget(Qtw.QPushButton('Equation', self, clicked=lambda:print('Equation'), objectName='EquationButton'),0,2)
+
+        self.mainLayout.addWidget(WindowSelectionButton('Animator',self.newWindow_signal, EditorIndex.ANIMATOR),0,0)
+        self.mainLayout.addWidget(WindowSelectionButton('HUE',self.newWindow_signal, EditorIndex.HUE_EDITOR),0,1)
+        self.mainLayout.addWidget(WindowSelectionButton('Equation',self.newWindow_signal, EditorIndex.EQUATION_INTERPRETER),0,2)
+
+
 class MainWindow(Qtw.QMainWindow):
+    openMenu_signal = QtCore.pyqtSignal()
+
     def __init__(self, mainApplication : Qtw.QApplication, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setWindowTitle("CubAnimate")
         self.setObjectName('Custom_Main_Window')
-        self.mainWidget = MainWidget(mainApplication)
-        self.setCentralWidget(self.mainWidget)
+        self.mainWidget = Editors_MainWidget(self.openMenu_signal, mainApplication)
+        self.mainWidget.newWindow_signal.connect(lambda i: self.closeMenu())
+        self.menuWidget = Menu_MainWidget(mainApplication, self.mainWidget.newWindow_signal)
+        self.windowStack = Qtw.QStackedWidget(self)
+        self.windowStack.addWidget(self.mainWidget)
+        self.windowStack.addWidget(self.menuWidget)
+        self.setCentralWidget(self.windowStack)
+    
+        self.editorsIndex = self.windowStack.indexOf(self.mainWidget)
+        self.menuIndex = self.windowStack.indexOf(self.menuWidget)
 
         self.backgroundColor = QColor(250,250,255)
         self.changeBackgroundColor(self.backgroundColor)
         self.centralWidget().layout().setContentsMargins(0,0,0,0)
         self.centralWidget().setContentsMargins(0,0,0,0)
 
+        self.openMenu_signal.connect(self.openMenu)
+        self.openMenu()
+        self.setBaseSize(self.screen().size())
+    
+    def openMenu(self):
+        self.windowStack.setCurrentIndex(self.menuIndex)
+    
+    def closeMenu(self):
+        self.windowStack.setCurrentIndex(self.editorsIndex)
+
     def changeBackgroundColor(self, color : QColor):
         self.setStyleSheet("#Custom_Main_Window {background:%s;}"%(color.name()))
-        self.mainWidget.changeBackgorundColor(color)
-
-    
+        self.mainWidget.changeBackgroundColor(color)
