@@ -5,7 +5,7 @@ from PyQt5.QtDataVisualization import (Q3DCamera, Q3DTheme, Q3DScatter,
                                        QAbstract3DGraph, QAbstract3DSeries, QScatter3DSeries,
                                        QScatterDataItem, QScatterDataProxy, QCustom3DItem)
 
-from CustomWidgets.CTypes import CubeSize, Axis
+from .CTypes import CubeSize, Axis
 
 class ScatterDataModifierInteract(QtCore.QObject):
     def __init__(self, interactive, cubeSize : CubeSize, newColor_signal:QtCore.pyqtSignal, eraseColor_signal:QtCore.pyqtSignal, scatter, parent):

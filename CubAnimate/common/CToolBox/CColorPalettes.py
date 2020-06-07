@@ -13,7 +13,7 @@ from PyQt5.QtCore import QSettings, pyqtSignal, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QTabWidget, QToolButton, QLabel, QTabBar, QLineEdit
 
-from CustomWidgets.CToolBox.CColorItems import CColorItems
+from .CColorItems import CColorItems
 
 
 __Author__ = 'Irony'

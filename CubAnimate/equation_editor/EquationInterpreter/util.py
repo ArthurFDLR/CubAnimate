@@ -9,7 +9,7 @@
 #       http://www.alphaomega-technology.com.au/license/AOT-OL/1.0
 #==============================================================================
 
-from CustomWidgets.EquationInterpreter import core
+from . import core
 
 def addFn(id,str,latex,args,func):
     core.functions[id] = {

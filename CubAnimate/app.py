@@ -1,9 +1,9 @@
-from CubeAnimate_mainWindow import MainWindow
+from .CubeAnimate_mainWindow import MainWindow
 from PyQt5 import QtWidgets
 import sys
-import src.resources
+from .resources import resources
 
-if __name__ == '__main__':    
+def run():
     app = QtWidgets.QApplication(sys.argv)
     mainWid = MainWindow(app)
     mainWid.showMaximized()

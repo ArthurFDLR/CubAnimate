@@ -1,2 +1,2 @@
-python CubeAnimate_run.py
+python -m CubAnimate
 pause

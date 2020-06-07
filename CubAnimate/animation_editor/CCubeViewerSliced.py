@@ -2,7 +2,7 @@ from PyQt5 import QtWidgets as Qtw
 from PyQt5 import QtCore
 from PyQt5.QtGui import QColor
 
-from CustomWidgets.CTypes import CubeSize, Axis
+from ..common.CTypes import CubeSize, Axis
 
 
 stylesheet = """

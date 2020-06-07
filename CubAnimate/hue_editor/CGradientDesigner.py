@@ -1,6 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt, pyqtSignal
-from CustomWidgets.CToolBox.CColorPicker import CColorPicker
+from ..common.CToolBox.CColorPicker import CColorPicker
 
 stylesheet = """
 QGroupBox, QLabel, QTabWidget {

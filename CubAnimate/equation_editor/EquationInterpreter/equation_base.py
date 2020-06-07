@@ -28,8 +28,8 @@ except ImportError:
     has_scipy = False
 
 import operator as op
-from CustomWidgets.EquationInterpreter.util import addOp, addFn, addConst, addUnaryOp
-from CustomWidgets.EquationInterpreter.similar import sim, nsim, gsim, lsim
+from .util import addOp, addFn, addConst, addUnaryOp
+from .similar import sim, nsim, gsim, lsim
 
 def equation_extend():
     def product(*args):

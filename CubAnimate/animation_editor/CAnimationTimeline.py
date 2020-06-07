@@ -3,7 +3,7 @@ from PyQt5 import QtWidgets as Qtw
 from PyQt5 import QtCore
 from PyQt5.QtGui import QPixmap
 
-from CustomWidgets.CTypes import Axis, CubeSize, CubeLEDFrame_DATA
+from ..common.CTypes import Axis, CubeSize, CubeLEDFrame_DATA
 
 stylesheet = """
 QGroupBox, QLabel, QTabWidget {

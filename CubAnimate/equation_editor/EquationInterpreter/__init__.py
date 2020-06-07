@@ -29,8 +29,8 @@ should use.
 
 all = ['util']
 
-from CustomWidgets.EquationInterpreter.core import Expression, recalculateFMatch
-from CustomWidgets.EquationInterpreter.equation_base import equation_extend
+from .core import Expression, recalculateFMatch
+from .equation_base import equation_extend
 
 def load():
     import os

@@ -15,12 +15,12 @@ from PyQt5.QtWidgets import QDialog, QVBoxLayout, QWidget,\
     QGraphicsDropShadowEffect, QSpacerItem, QSizePolicy,\
     QHBoxLayout, QPushButton, QGridLayout, QLabel, QSlider
 
-from CustomWidgets.CToolBox.CColorControl import CColorControl
-from CustomWidgets.CToolBox.CColorInfos import CColorInfos
-from CustomWidgets.CToolBox.CColorPalettes import CColorPalettes
-from CustomWidgets.CToolBox.CColorPanel import CColorPanel
-from CustomWidgets.CToolBox.CColorSlider import CColorSlider
-from CustomWidgets.CToolBox.CColorStraw import CColorStraw
+from .CColorControl import CColorControl
+from .CColorInfos import CColorInfos
+from .CColorPalettes import CColorPalettes
+from .CColorPanel import CColorPanel
+from .CColorSlider import CColorSlider
+from .CColorStraw import CColorStraw
 
 
 __Author__ = "Irony"
