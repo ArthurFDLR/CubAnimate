@@ -13,7 +13,8 @@ from CustomWidgets.CEIWindow import EIWindow
 from CustomWidgets.CGradientDesigner import GradientDesigner
 #from CustomWidgets.CWaitingSpinnerWidget import QtWaitingSpinner
 
-#import resources
+from typing import Callable
+
 
 class DimmingLayerWidget(Qtw.QWidget):
     stylesheetOpacity = """
@@ -126,7 +127,7 @@ class Animator(Qtw.QWidget):
     }
     """
 
-    def __init__(self, parent, openMenu_signal:QtCore.pyqtSignal, cubeSizeInit:CubeSize = CubeSize(8,8,8)):
+    def __init__(self, parent, waitingCursor_signal:QtCore.pyqtSignal, cubeSizeInit:CubeSize = CubeSize(8,8,8)):
         super(Qtw.QWidget, self).__init__(parent)
 
         ## Attributes & Parameters
@@ -193,9 +194,9 @@ class Animator(Qtw.QWidget):
         self.SaveShortcut = Qtw.QShortcut(QKeySequence("Ctrl+S"), self)
         self.SaveShortcut.activated.connect(self.saveAnimation)
 
-        self.openMenu_signal = openMenu_signal
+        self.waitingCursor_signal = waitingCursor_signal
 
-    def notSaved(self, x=0, y=0, z=0, color = QColor(0,0,0)):
+    def notSaved(self):
         self.animationSaved = False
     
     def getCurrentColor(self) -> QColor:
@@ -210,7 +211,7 @@ class Animator(Qtw.QWidget):
     def changeCurrentFrame(self):
         """ Change the frame being edited."""
 
-        self.openMenu_signal.emit(True)
+        self.waitingCursor_signal.emit(True)
 
         if self.currentSelectedFrame != None:
             self.currentSelectedFrame.setIllustration(self.getCurrentCubePixmap()) #Update illustration of the leaved frame
@@ -249,7 +250,7 @@ class Animator(Qtw.QWidget):
                 self.newColorLED_signal.connect(self.currentSelectedFrame.getFrameData().setColorLED) #Connect new frame
                 self.eraseColorLED_signal.connect(self.currentSelectedFrame.getFrameData().eraseColorLED)
         
-        self.openMenu_signal.emit(False)
+        self.waitingCursor_signal.emit(False)
 
     
     def addFrame(self) -> CubeLEDFrame:
@@ -260,6 +261,7 @@ class Animator(Qtw.QWidget):
         self.animationViewer.changeFrameSelected(self.animationViewer.frameList[num])
         self.animationViewer.frameList[num].setIllustration(self.blankIllustration)
         #self.cubeViewer.newFrameAnimation()
+        self.animationSaved = False
         return self.animationViewer.frameList[num]
     
     def saveAnimation(self):
@@ -282,10 +284,11 @@ class Animator(Qtw.QWidget):
         self.cubeViewer.changeCubeSize(cubeSize)
         self.cubeSliced.changeCubeSize(cubeSize)
     
-    def isSaved(self):
+    def isSaved(self) -> bool:
         return self.animationSaved
     
     def createAnimation(self, cubeSize : CubeSize, name:str):
+        self.animationSaved = False
         self.animationViewer.clearAllFrames()
         self.animationName = name
         self.changeCubeSize(cubeSize)
@@ -295,6 +298,23 @@ class Animator(Qtw.QWidget):
     def isEmpty(self):
         return self.noAnimationEdited
     
+    def openAnimation(self):
+        newAnimDialog = NewAnimationDialog(self)
+        if newAnimDialog.exec_(): #If pop-up not exited
+            #self.waitingCursor_signal.emit(True)
+            '''
+            if newAnimDialog.createNewAnimation(): #Create a new animation
+                print('Create new animation')
+                self.animator.createAnimation(self.cubeSize,'New animation')
+            '''
+            if newAnimDialog.loadAnimation(): #Load an existing animation
+                print('Load animation: ' + newAnimDialog.getFileLocation())
+                self.animator.changeCubeSize(self.cubeSize)
+                self.animator.loadAnimation(newAnimDialog.getFileLocation())
+            #self.waitingCursor_signal.emit(False)
+            #self.windowStack.setCurrentIndex(newIndexWindow)
+        #self.animator.resizeEvent(None) #update positions
+    
     def loadAnimation(self, fileLocation : str):
         self.animationViewer.clearAllFrames()
         file = open(fileLocation,'r')
@@ -303,6 +323,7 @@ class Animator(Qtw.QWidget):
                 self.loadFrame(line[:-1])
         file.close()
         self.noAnimationEdited = False
+        self.animationSaved = True
     
     def loadFrame(self, dataLine:str):
         self.addFrame()
@@ -545,19 +566,27 @@ class EditorIndex():
     ANIMATOR, EQUATION_INTERPRETER, HUE_EDITOR = range(3)
 
 class StatusBar_Widget(Qtw.QWidget):
-    def __init__(self, openMenu_signal:QtCore.pyqtSignal):
+    def __init__(self, openMenu_signal:QtCore.pyqtSignal, saveFile_signal:QtCore.pyqtSignal, openFile_signal:QtCore.pyqtSignal):
         super().__init__()
         self.openMenu_signal = openMenu_signal
+        self.saveFile_signal = saveFile_signal
+        self.openFile_signal = openFile_signal
+
         self.layout=Qtw.QHBoxLayout(self)
         self.setLayout(self.layout)
         self.layout.addWidget(Qtw.QPushButton('Menu', self, clicked=lambda:self.openMenu_signal.emit(), objectName='menuButton'))
+        self.layout.addWidget(Qtw.QPushButton('Save', self, clicked=lambda:self.saveFile_signal.emit(), objectName='saveButton'))
+        self.layout.addWidget(Qtw.QPushButton('Open animation', self, clicked=lambda:self.openFile_signal.emit(), objectName='openButton'))
+        #self.layout.addWidget(Qtw.QPushButton('Play', self, clicked=lambda:self.openMenu_signal.emit(), objectName='menuButton'))
         self.layout.addWidget(Qtw.QLabel('ComPort cube'))
+
 
 
 class Editors_MainWidget(Qtw.QWidget):
     newWindow_signal = QtCore.pyqtSignal(int)
     waitingCursor_signal = QtCore.pyqtSignal(bool)
-    #ANIMATOR, EQUATION_INTERPRETER, HUE_EDITOR = range(3)
+    saveFile_signal = QtCore.pyqtSignal()
+    openFile_signal = QtCore.pyqtSignal()
 
     def __init__(self, openMenu_signal:QtCore.pyqtSignal, mainApplication : Qtw.QApplication):
         super().__init__()
@@ -578,14 +607,7 @@ class Editors_MainWidget(Qtw.QWidget):
         self.mainMenu = MainMenu(self.newWindow_signal, self)
         self.drawerMenu.setWidget(self.mainMenu)
 
-        ## Windows manager
-        '''
-        self.windowList = Qtw.QListWidget()
-        self.windowList.insertItem(self.STARTER, 'StarterBackground' )
-        self.windowList.insertItem(self.ANIMATOR, 'Animator' )
-        self.windowList.insertItem(self.EQUATION_INTERPRETER, 'EquationInterpreter')
-        self.windowList.insertItem(self.HUE_EDITOR, 'HueEditor')
-        '''
+        ## Windows manager, add widget according to the order given in EditorIndex
         self.windowStack = Qtw.QStackedWidget(self)
         self.windowStack.addWidget(self.animator)
         self.windowStack.addWidget(self.equationInterpreter)
@@ -593,8 +615,10 @@ class Editors_MainWidget(Qtw.QWidget):
 
         self.newWindow_signal.connect(self.changeWindow)
         self.waitingCursor_signal.connect(self.setWaitingCursor)
+        self.saveFile_signal.connect(self.saveFile)
+        self.openFile_signal.connect(self.openFile)
 
-        self.statusBar = StatusBar_Widget(self.openMenu_signal)
+        self.statusBar = StatusBar_Widget(self.openMenu_signal, self.saveFile_signal, self.openFile_signal)
 
         ## MainWidget layout
         self.mainLayout=Qtw.QVBoxLayout(self)
@@ -629,6 +653,7 @@ class Editors_MainWidget(Qtw.QWidget):
             self.hueEditor.activeAnimation(False)
 
         if newIndexWindow == EditorIndex.ANIMATOR:                        ## ANIMATION WINDOW IN
+            ''' With launching pop-up
             if not self.animator.isEmpty():
                 self.windowStack.setCurrentIndex(newIndexWindow)
     
@@ -645,6 +670,12 @@ class Editors_MainWidget(Qtw.QWidget):
                 self.waitingCursor_signal.emit(False)
                 self.windowStack.setCurrentIndex(newIndexWindow)
             self.animator.resizeEvent(None) #update positions
+            '''
+            self.waitingCursor_signal.emit(True)
+            self.animator.createAnimation(self.cubeSize,'New animation')
+            self.windowStack.setCurrentIndex(EditorIndex.ANIMATOR)
+            self.animator.resizeEvent(None)
+            self.waitingCursor_signal.emit(False)
 
         if newIndexWindow == EditorIndex.EQUATION_INTERPRETER:            ## EQUATION WINDOW IN
             self.windowStack.setCurrentIndex(newIndexWindow)
@@ -661,10 +692,18 @@ class Editors_MainWidget(Qtw.QWidget):
         self.animator.setBackgroundColor(color)
         self.hueEditor.setBackgroundColor(color)
         self.backgroundColor = color
+    
+    def saveFile(self):
+        if self.windowStack.currentIndex() == EditorIndex.ANIMATOR:
+            self.animator.saveAnimation()
+        
+    def openFile(self):
+        if self.windowStack.currentIndex() == EditorIndex.ANIMATOR:
+            self.animator.openAnimation()
 
 
 class Menu_MainWidget(Qtw.QWidget):
-    def __init__(self, mainApplication : Qtw.QApplication, newWindow_signal:QtCore.pyqtSignal):
+    def __init__(self, mainApplication : Qtw.QApplication, newWindow_signal:QtCore.pyqtSignal, ):
         super().__init__()
         self.mainApplication = mainApplication
         self.setObjectName('Custom_Menu_Widget')
