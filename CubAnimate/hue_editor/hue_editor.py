@@ -76,7 +76,7 @@ class HueEditor(Qtw.QWidget):
         self.verticalSpliter.addWidget(self.horizontlSpliter)
         self.verticalSpliter.addWidget(self.gradientViewer)
         self.verticalSpliter.setStretchFactor(0,1)
-        self.verticalSpliter.setStretchFactor(1,0)
+        self.verticalSpliter.setStretchFactor(1,1)
 
         self.mainLayout.addWidget(self.verticalSpliter)
 

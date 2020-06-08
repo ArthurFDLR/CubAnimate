@@ -1,0 +1,1 @@
+pyinstaller --noconsole --onefile .\CubAnimate\__main__.py

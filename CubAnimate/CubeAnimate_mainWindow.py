@@ -173,15 +173,16 @@ class Editors_MainWidget(Qtw.QWidget):
         self.hueEditor = HueEditor(self.cubeSize, self)
 
         ## Main menu
-        self.drawerMenu = CDrawer(self)
+        #self.drawerMenu = CDrawer(self)
         self.mainMenu = MainMenu(self.newWindow_signal, self)
-        self.drawerMenu.setWidget(self.mainMenu)
+        #self.drawerMenu.setWidget(self.mainMenu)
 
         ## Windows manager, add widget according to the order given in EditorIndex
         self.windowStack = Qtw.QStackedWidget(self)
         self.windowStack.addWidget(self.animator)
         self.windowStack.addWidget(self.equationInterpreter)
         self.windowStack.addWidget(self.hueEditor)
+        self.currentIndexEditor = self.windowStack.currentIndex()
 
         self.newWindow_signal.connect(self.changeWindow)
         self.waitingCursor_signal.connect(self.setWaitingCursor)
@@ -213,10 +214,11 @@ class Editors_MainWidget(Qtw.QWidget):
             self.mainApplication.restoreOverrideCursor()
             #self.waitingIcon.stop()
     
-    def openMainMenu(self):
-        self.drawerMenu.show()
+    #def openMainMenu(self):
+    #    self.drawerMenu.show()
     
     def changeWindow(self, newIndexWindow):
+        self.waitingCursor_signal.emit(True)
         oldIndexWindow = self.windowStack.currentIndex()
 
         if oldIndexWindow == EditorIndex.HUE_EDITOR:                      ## HUE WINDOW OUT
@@ -241,20 +243,23 @@ class Editors_MainWidget(Qtw.QWidget):
                 self.windowStack.setCurrentIndex(newIndexWindow)
             self.animator.resizeEvent(None) #update positions
             '''
-            self.waitingCursor_signal.emit(True)
+            
             self.animator.createAnimation(self.cubeSize,'New animation')
             self.windowStack.setCurrentIndex(EditorIndex.ANIMATOR)
             self.animator.resizeEvent(None)
-            self.waitingCursor_signal.emit(False)
+            self.currentIndexEditor = EditorIndex.ANIMATOR
 
         if newIndexWindow == EditorIndex.EQUATION_INTERPRETER:            ## EQUATION WINDOW IN
             self.windowStack.setCurrentIndex(newIndexWindow)
+            self.currentIndexEditor = EditorIndex.EQUATION_INTERPRETER
         
         if newIndexWindow == EditorIndex.HUE_EDITOR:                      ## HUE WINDOW IN
             self.hueEditor.activeAnimation(True)
             self.windowStack.setCurrentIndex(newIndexWindow)
+            self.currentIndexEditor = EditorIndex.HUE_EDITOR
 
-        self.drawerMenu.animationOut()
+        #self.drawerMenu.animationOut()
+        self.waitingCursor_signal.emit(False)
     
     def changeBackgroundColor(self, color:QColor):
         self.setStyleSheet("#Custom_Main_Widget {background: %s;}"%(color.name()))
@@ -270,6 +275,16 @@ class Editors_MainWidget(Qtw.QWidget):
     def openFile(self):
         if self.windowStack.currentIndex() == EditorIndex.ANIMATOR:
             self.animator.openAnimation()
+    
+    def getCurrentIndexEditor(self):
+        return self.currentIndexEditor
+    
+    def currentFileSaved(self) -> bool:
+        boolOut = True
+        if self.windowStack.currentIndex() == EditorIndex.ANIMATOR:
+            boolOut = self.animator.isSaved()
+            print(boolOut)
+        return boolOut
 
 
 class Menu_MainWidget(Qtw.QWidget):
@@ -308,6 +323,7 @@ class MainWindow(Qtw.QMainWindow):
     
         self.editorsIndex = self.windowStack.indexOf(self.mainWidget)
         self.menuIndex = self.windowStack.indexOf(self.menuWidget)
+        self.windowStack.setCurrentIndex(self.menuIndex)
 
         self.backgroundColor = QColor(250,250,255)
         self.changeBackgroundColor(self.backgroundColor)
@@ -315,11 +331,31 @@ class MainWindow(Qtw.QMainWindow):
         self.centralWidget().setContentsMargins(0,0,0,0)
 
         self.openMenu_signal.connect(self.openMenu)
-        self.openMenu()
         self.setBaseSize(self.screen().size())
+
+        ## Saving Pop-up
+        self.savingPopUp = Qtw.QMessageBox()
+        self.savingPopUp.setText("The document has been modified.")
+        self.savingPopUp.setInformativeText("Do you want to save your changes?")
+        self.savingPopUp.setStandardButtons(Qtw.QMessageBox.Save | Qtw.QMessageBox.Discard | Qtw.QMessageBox.Cancel)
+        self.savingPopUp.setDefaultButton(Qtw.QMessageBox.Save)
     
     def openMenu(self):
-        self.windowStack.setCurrentIndex(self.menuIndex)
+        canOpen = True
+        if self.windowStack.currentIndex() == self.editorsIndex and not self.mainWidget.currentFileSaved(): #Leaving not saved editor
+            print('hey')
+            if self.mainWidget.getCurrentIndexEditor() == EditorIndex.ANIMATOR:
+                out = self.savingPopUp.exec()
+                if out == Qtw.QMessageBox.Save:
+                    print('Save')
+                    canOpen = self.mainWidget.animator.saveAnimation()
+                if out == Qtw.QMessageBox.Discard:
+                    print('Discard')
+                if out == Qtw.QMessageBox.Cancel:
+                    print('Cancel')
+                    canOpen = False
+        if canOpen:
+            self.windowStack.setCurrentIndex(self.menuIndex)
     
     def closeMenu(self):
         self.windowStack.setCurrentIndex(self.editorsIndex)

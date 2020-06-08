@@ -274,6 +274,8 @@ class Animator(Qtw.QWidget):
             self.animationSaved = True
         else:
             print('Saving canceled')
+        
+        return self.animationSaved
     
     def changeCubeSize(self, cubeSize : CubeSize):
         self.cubeSize = cubeSize
@@ -284,12 +286,12 @@ class Animator(Qtw.QWidget):
         return self.animationSaved
     
     def createAnimation(self, cubeSize : CubeSize, name:str):
-        self.animationSaved = False
         self.animationViewer.clearAllFrames()
         self.animationName = name
         self.changeCubeSize(cubeSize)
         self.noAnimationEdited = False
         self.addFrame()
+        self.animationSaved = True
     
     def isEmpty(self):
         return self.noAnimationEdited
