@@ -269,8 +269,10 @@ class Editors_MainWidget(Qtw.QWidget):
         self.backgroundColor = color
     
     def saveFile(self):
+        boulOut = True
         if self.windowStack.currentIndex() == EditorIndex.ANIMATOR:
-            self.animator.saveAnimation()
+            boulOut = self.animator.saveAnimation()
+        return boulOut
         
     def openFile(self):
         if self.windowStack.currentIndex() == EditorIndex.ANIMATOR:
@@ -285,7 +287,6 @@ class Editors_MainWidget(Qtw.QWidget):
             boolOut = self.animator.isSaved()
             print(boolOut)
         return boolOut
-
 
 class Menu_MainWidget(Qtw.QWidget):
     def __init__(self, mainApplication : Qtw.QApplication, newWindow_signal:QtCore.pyqtSignal, ):
@@ -308,7 +309,7 @@ class Menu_MainWidget(Qtw.QWidget):
 
 class MainWindow(Qtw.QMainWindow):
     openMenu_signal = QtCore.pyqtSignal()
-
+    
     def __init__(self, mainApplication : Qtw.QApplication, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setWindowTitle("CubAnimate")
@@ -339,22 +340,25 @@ class MainWindow(Qtw.QMainWindow):
         self.savingPopUp.setInformativeText("Do you want to save your changes?")
         self.savingPopUp.setStandardButtons(Qtw.QMessageBox.Save | Qtw.QMessageBox.Discard | Qtw.QMessageBox.Cancel)
         self.savingPopUp.setDefaultButton(Qtw.QMessageBox.Save)
+        self.savingPopUp.setIcon(Qtw.QMessageBox.Warning)
     
-    def openMenu(self):
-        canOpen = True
+    def canLeaveEditor(self):
+        boolOut = True
         if self.windowStack.currentIndex() == self.editorsIndex and not self.mainWidget.currentFileSaved(): #Leaving not saved editor
-            print('hey')
-            if self.mainWidget.getCurrentIndexEditor() == EditorIndex.ANIMATOR:
+            if self.mainWidget.getCurrentIndexEditor() == EditorIndex.ANIMATOR: #Animator
                 out = self.savingPopUp.exec()
                 if out == Qtw.QMessageBox.Save:
                     print('Save')
-                    canOpen = self.mainWidget.animator.saveAnimation()
+                    boolOut = self.mainWidget.saveFile()
                 if out == Qtw.QMessageBox.Discard:
                     print('Discard')
                 if out == Qtw.QMessageBox.Cancel:
                     print('Cancel')
-                    canOpen = False
-        if canOpen:
+                    boolOut = False
+        return boolOut
+
+    def openMenu(self):
+        if self.canLeaveEditor():
             self.windowStack.setCurrentIndex(self.menuIndex)
     
     def closeMenu(self):
@@ -363,3 +367,10 @@ class MainWindow(Qtw.QMainWindow):
     def changeBackgroundColor(self, color : QColor):
         self.setStyleSheet("#Custom_Main_Window {background:%s;}"%(color.name()))
         self.mainWidget.changeBackgroundColor(color)
+    
+    def closeEvent(self, event):
+        if self.canLeaveEditor():
+            event.accept() # let the window close
+        else:
+            event.ignore()
+
