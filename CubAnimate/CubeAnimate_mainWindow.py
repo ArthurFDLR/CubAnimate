@@ -136,6 +136,35 @@ class EditorIndex():
     ANIMATOR, EQUATION_INTERPRETER, HUE_EDITOR = range(3)
 
 class StatusBar_Widget(Qtw.QWidget):
+    stylesheet = """
+    QPushButton {
+    border: 0px;
+    border-radius: 3px;
+    max-width: 30px;
+    min-width: 30px;
+    max-height: 30px;
+    min-height: 30px;
+    margin-left: 50px;
+    margin-bottom: 0px;
+    }
+    QPushButton:hover {
+        border-color: rgb(139, 173, 228);
+    }
+    QPushButton:pressed {
+        color: #cbcbcb;
+    }
+
+    #menuButton {
+        image : url(:/UI/home.svg);
+    }
+    #saveButton {
+        image : url(:/UI/save.svg);
+    }
+    #openButton {
+        image : url(:/UI/import.svg);
+    }
+    """
+
     def __init__(self, openMenu_signal:QtCore.pyqtSignal, saveFile_signal:QtCore.pyqtSignal, openFile_signal:QtCore.pyqtSignal):
         super().__init__()
         self.openMenu_signal = openMenu_signal
@@ -144,11 +173,15 @@ class StatusBar_Widget(Qtw.QWidget):
 
         self.layout=Qtw.QHBoxLayout(self)
         self.setLayout(self.layout)
-        self.layout.addWidget(Qtw.QPushButton('Menu', self, clicked=lambda:self.openMenu_signal.emit(), objectName='menuButton'))
-        self.layout.addWidget(Qtw.QPushButton('Save', self, clicked=lambda:self.saveFile_signal.emit(), objectName='saveButton'))
-        self.layout.addWidget(Qtw.QPushButton('Open animation', self, clicked=lambda:self.openFile_signal.emit(), objectName='openButton'))
+        self.setStyleSheet(self.stylesheet)
+
+        self.layout.addItem(Qtw.QSpacerItem(20, 40, Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Minimum))
+        self.layout.addWidget(Qtw.QPushButton('', self, clicked=lambda:self.openMenu_signal.emit(), cursor=QtCore.Qt.PointingHandCursor, toolTip='Go to menu', objectName='menuButton'))
+        self.layout.addWidget(Qtw.QPushButton('', self, clicked=lambda:self.saveFile_signal.emit(), cursor=QtCore.Qt.PointingHandCursor, toolTip='Save animation', objectName='saveButton'))
+        self.layout.addWidget(Qtw.QPushButton('', self, clicked=lambda:self.openFile_signal.emit(), cursor=QtCore.Qt.PointingHandCursor, toolTip='Open animation', objectName='openButton'))
+        self.layout.addItem(Qtw.QSpacerItem(20, 40, Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Minimum))
         #self.layout.addWidget(Qtw.QPushButton('Play', self, clicked=lambda:self.openMenu_signal.emit(), objectName='menuButton'))
-        self.layout.addWidget(Qtw.QLabel('ComPort cube'))
+        #self.layout.addWidget(Qtw.QLabel('ComPort cube'))
 
 
 

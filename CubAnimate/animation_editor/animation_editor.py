@@ -307,8 +307,8 @@ class Animator(Qtw.QWidget):
             '''
             if newAnimDialog.loadAnimation(): #Load an existing animation
                 print('Load animation: ' + newAnimDialog.getFileLocation())
-                self.animator.changeCubeSize(self.cubeSize)
-                self.animator.loadAnimation(newAnimDialog.getFileLocation())
+                self.changeCubeSize(self.cubeSize)
+                self.loadAnimation(newAnimDialog.getFileLocation())
             #self.waitingCursor_signal.emit(False)
             #self.windowStack.setCurrentIndex(newIndexWindow)
         #self.animator.resizeEvent(None) #update positions

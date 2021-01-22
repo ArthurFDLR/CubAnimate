@@ -4,5 +4,9 @@
         <file alias="SplitterHandleHorizontal.svg">images/SplitterHandleHorizontal.svg</file>
         <file alias="SplitterHandleVertical.svg">images/SplitterHandleVertical.svg</file>
         <file alias="DropFileZone.svg">images/DropFileZone.svg</file>
+        <file alias="home.svg">images/home.svg</file>
+        <file alias="play.svg">images/play.svg</file>
+        <file alias="save.svg">images/save.svg</file>
+        <file alias="import.svg">images/import.svg</file>
     </qresource>
 </RCC>

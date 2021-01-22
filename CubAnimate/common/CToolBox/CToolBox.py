@@ -281,10 +281,8 @@ class CToolBox_Animator(QWidget):
         self.upperLayout.addWidget(self.labelValue,0,2)
         self.upperLayout.addWidget(self.labelName,0,0)
 
-        self.saveButton = QPushButton("Save", self, cursor=Qt.PointingHandCursor, toolTip='Export animation',clicked= lambda :self.saveAnimation_signal.emit())
-        self.playButton = QPushButton("Play animation", self, cursor=Qt.PointingHandCursor, toolTip='Play animation on screen',clicked= lambda :self.playAnimation_signal.emit())
-        self.upperLayout.addWidget(self.saveButton,2,0)
-        self.upperLayout.addWidget(self.playButton,2,1)
+        #self.playButton = QPushButton('', self, objectName='playButton', cursor=Qt.PointingHandCursor, toolTip='Play animation on screen',clicked= lambda :self.playAnimation_signal.emit())
+        #self.upperLayout.addWidget(self.playButton,2,1)
         layout.addWidget(QWidget(self.colorView, objectName='splitLine'))
 
         self.colorPicker = ColorPickerWidget(self.alphaON, self.movableON)
