@@ -346,6 +346,7 @@ class MainWindow(Qtw.QMainWindow):
     def __init__(self, mainApplication : Qtw.QApplication, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setWindowTitle("CubAnimate")
+        self.setWindowIcon(QIcon(':/UI/icon.ico')) 
         self.setObjectName('Custom_Main_Window')
         self.mainWidget = Editors_MainWidget(self.openMenu_signal, mainApplication)
         self.mainWidget.newWindow_signal.connect(lambda i: self.closeMenu())

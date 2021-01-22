@@ -8,5 +8,7 @@
         <file alias="play.svg">images/play.svg</file>
         <file alias="save.svg">images/save.svg</file>
         <file alias="import.svg">images/import.svg</file>
+        <file alias="icon.ico">./icon.ico</file>
     </qresource>
 </RCC>
+<!-- Run 'pyrcc5 resources.qrc -o resources.py' to update resources.py -->
