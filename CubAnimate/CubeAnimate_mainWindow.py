@@ -2,6 +2,8 @@ from PyQt5 import QtWidgets as Qtw
 from PyQt5 import QtCore
 from PyQt5.QtGui import QColor, QFont, QVector3D, QPixmap, QIcon, QKeySequence
 
+from .__init__ import CUBE_SIZE
+
 from .common.CDrawer import CDrawer
 from .common.CTypes import Axis, CubeSize, CubeLEDFrame_DATA
 
@@ -180,7 +182,6 @@ class StatusBar_Widget(Qtw.QWidget):
         self.layout.addWidget(Qtw.QPushButton('', self, clicked=lambda:self.saveFile_signal.emit(), cursor=QtCore.Qt.PointingHandCursor, toolTip='Save animation', objectName='saveButton'))
         self.layout.addWidget(Qtw.QPushButton('', self, clicked=lambda:self.openFile_signal.emit(), cursor=QtCore.Qt.PointingHandCursor, toolTip='Open animation', objectName='openButton'))
         self.layout.addItem(Qtw.QSpacerItem(20, 40, Qtw.QSizePolicy.Expanding, Qtw.QSizePolicy.Minimum))
-        #self.layout.addWidget(Qtw.QPushButton('Play', self, clicked=lambda:self.openMenu_signal.emit(), objectName='menuButton'))
         #self.layout.addWidget(Qtw.QLabel('ComPort cube'))
 
 
@@ -193,10 +194,9 @@ class Editors_MainWidget(Qtw.QWidget):
 
     def __init__(self, openMenu_signal:QtCore.pyqtSignal, mainApplication : Qtw.QApplication):
         super().__init__()
-        self.cubeSize = CubeSize(8,8,8)
+        self.cubeSize = CubeSize(**CUBE_SIZE)
         self.mainApplication = mainApplication
         self.setObjectName('Custom_Main_Widget')
-        self.backgroundColor = QColor(250,250,255)
         self.openMenu_signal = openMenu_signal
 
         ## Windows instantiation
@@ -230,7 +230,6 @@ class Editors_MainWidget(Qtw.QWidget):
 
         self.mainLayout.addWidget(self.statusBar)
         self.mainLayout.addWidget(self.windowStack)      
-        #self.mainLayout.addWidget(OpenMenuButton(max(30,self.screen().size().width()*0.03), self.openMainMenu, self.backgroundColor), 0, 0)
         self.mainLayout.setContentsMargins(0,0,0,0)
         self.mainLayout.setSpacing(0)
 
@@ -332,7 +331,7 @@ class Menu_MainWidget(Qtw.QWidget):
         super().__init__()
         self.mainApplication = mainApplication
         self.setObjectName('Custom_Menu_Widget')
-        self.backgroundColor = QColor(250,250,255)
+        self.backgroundColor = QColor(233, 235, 238)
         self.newWindow_signal = newWindow_signal
 
         self.mainLayout=Qtw.QGridLayout(self)
