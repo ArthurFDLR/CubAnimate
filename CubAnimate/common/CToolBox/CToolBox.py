@@ -322,13 +322,11 @@ class CToolBox_Animator(QWidget):
 
 class CToolBox_HUE(QWidget):
 
-    def __init__(self, alphaSelection : bool, movableWindow : bool, saveAnimation_signal:pyqtSignal, *args, **kwargs):
+    def __init__(self, alphaSelection : bool, movableWindow : bool, *args, **kwargs):
         super(CToolBox_HUE, self).__init__(*args, **kwargs)
 
         self.alphaON = alphaSelection
         self.movableON = movableWindow
-
-        self.saveAnimation_signal = saveAnimation_signal
 
         self.loopDuration = 1000 #ms
 
@@ -368,8 +366,6 @@ class CToolBox_HUE(QWidget):
         self.upperLayout.addWidget(self.labelValue,0,2)
         self.upperLayout.addWidget(self.labelName,0,0)
 
-        self.saveButton = QPushButton("Save", self, cursor=Qt.PointingHandCursor, toolTip='Export animation',clicked= lambda :self.saveAnimation_signal.emit())
-        self.upperLayout.addWidget(self.saveButton,2,0)
         layout.addWidget(QWidget(self.colorView, objectName='splitLine'))
 
         self.colorPicker = ColorPickerWidget(self.alphaON, self.movableON)

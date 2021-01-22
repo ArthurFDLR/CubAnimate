@@ -25,7 +25,6 @@ class TimerThread(QtCore.QThread):
 
 class HueEditor(Qtw.QWidget):
     
-    saveHUE_signal = QtCore.pyqtSignal()
     anim_signal = QtCore.pyqtSignal()
 
     stylesheet = """
@@ -58,7 +57,7 @@ class HueEditor(Qtw.QWidget):
         self.i=0
 
         ## Widget instantiation
-        self.toolBox = CToolBox_HUE(False, False, self.saveHUE_signal, self)
+        self.toolBox = CToolBox_HUE(False, False, self)
         self.cubeViewer = CubeViewer3DInteract(False, self.cubeSize, None, None, self)
         self.gradientViewer = GradientDesigner()
 
@@ -79,11 +78,10 @@ class HueEditor(Qtw.QWidget):
         self.verticalSpliter.setStretchFactor(1,1)
 
         self.mainLayout.addWidget(self.verticalSpliter)
-
-        self.saveHUE_signal.connect(lambda: print('Save HUE'))
     
     def setBackgroundColor(self, color:QColor):
         self.setStyleSheet(self.stylesheet % {'bgColor': color.name()})
+        self.cubeViewer.setBackgroundColor(color)
     
     def cubeViewerUpdate(self):
         if self.animationOn :
@@ -100,3 +98,14 @@ class HueEditor(Qtw.QWidget):
     
     def activeAnimation(self, active:bool):
         self.animationOn = active
+
+    def saveAnimation(self):
+        print('Save HUE')
+        return True
+    
+    def isSaved(self):
+        print('File is saved')
+        return True
+    
+    def openAnimation(self):
+        print("Open HUE")

@@ -305,12 +305,16 @@ class Editors_MainWidget(Qtw.QWidget):
         boulOut = True
         if self.windowStack.currentIndex() == EditorIndex.ANIMATOR:
             boulOut = self.animator.saveAnimation()
+        if self.windowStack.currentIndex() == EditorIndex.HUE_EDITOR:
+            boulOut = self.hueEditor.saveAnimation()
         return boulOut
         
     def openFile(self):
         if self.windowStack.currentIndex() == EditorIndex.ANIMATOR:
             self.animator.openAnimation()
-    
+        if self.windowStack.currentIndex() == EditorIndex.HUE_EDITOR:
+            self.hueEditor.openAnimation()
+        
     def getCurrentIndexEditor(self):
         return self.currentIndexEditor
     
@@ -319,6 +323,8 @@ class Editors_MainWidget(Qtw.QWidget):
         if self.windowStack.currentIndex() == EditorIndex.ANIMATOR:
             boolOut = self.animator.isSaved()
             print(boolOut)
+        if self.windowStack.currentIndex() == EditorIndex.HUE_EDITOR:
+            boolOut = self.hueEditor.isSaved()
         return boolOut
 
 class Menu_MainWidget(Qtw.QWidget):
