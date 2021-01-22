@@ -1,11 +1,11 @@
 # CubAnimate: An LED-Cube animation tool
 
-CubAnimate is an application to visually develop animations for LED-Cubes through a frame-by-frame editor, a HUE mode, or even based on three variables equations (x-axis, y-axis, time). All animations can be exported as ```.anim```, which are formatted plain-text files. This allowed us to run animations on any micro-processor smoothly.
+Give life to LED-Cubes with this tool! You can visually create animations for LED-Cubes with a frame-by-frame editor, a HUE mode, or even three variables equations (x-axis, y-axis, time). All animations can be exported as ```.anim```, which are formatted plain-text files. This allowed us to run animations on any micro-processor smoothly.
 
-Frame-by-frame editor             |  HUE editor
-:--------------------------------:|:---------------------------:
-![CubAnimate_AnimationEditor](./.github/markdown/CubAnimate_AnimationEditor.png)  |  ![CubAnimate_HUEEditor](./.github/markdown/CubAnimate_HUEEditor.png)
-
+<p align="center">
+   <img src="./.github/markdown/CubAnimate_AnimationEditor.png" alt="CubAnimate_AnimationEditor" width="500" alt="Frame-by-frame editor">
+   <img src="./.github/markdown/CubAnimate_HUEEditor.png" alt="CubAnimate_AnimationEditor" width="500" alt="HUE editor">
+</p>
 
 ## Installation
 
