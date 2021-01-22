@@ -357,7 +357,7 @@ class CToolBox_HUE(QWidget):
         layout.addWidget(self.upperWidget)
         self.upperLayout = QGridLayout(self.upperWidget)
 
-        self.labelName = QLabel('Loop duration', self)
+        self.labelName = QLabel('Loop speed', self)
         self.labelValue = QLabel('{}'.format(int(self.loopDuration/1000)), self)
         self.sliderFPS = QSlider(Qt.Horizontal, valueChanged=lambda v: self.labelValue.setText(str(v)))
         self.sliderFPS.setValue(int(self.loopDuration/1000))
