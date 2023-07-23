@@ -1,6 +1,6 @@
-﻿altgraph==0.17
+altgraph==0.17
 cycler==0.10.0
-future==0.18.2
+future==0.18.3
 importlib-metadata==3.4.0
 kiwisolver==1.3.1
 matplotlib==3.3.3
